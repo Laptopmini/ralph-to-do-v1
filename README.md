@@ -1,10 +1,17 @@
-# ralph-node-base
+# ralph-html
 
-A fork of [ralph-node](https://github.com/Laptopmini/ralph-node) that has been initialized by running the bootstrap PRD. This repo is a starting point for further PRD-driven development using the Ralph Loop.
+A fork of [ralph-node](https://github.com/Laptopmini/ralph-node) with a simple boilerplate to serve static HTML based application.
 
 Fork this repo and drop in a new `PRD.md` to start building something with the loop already bootstrapped.
 
 For full documentation on how the Ralph Loop works and how to use these repos, see the [original ralph-node README](https://github.com/Laptopmini/ralph-node#readme).
+
+## Source
+
+All `ralph-node` repos begin from the same genesis, and branch off a specific upstream in its tree:
+
+- **Genesis:** https://github.com/Laptopmini/ralph-node
+- **Upstream:** https://github.com/Laptopmini/ralph-node-base
 
 ## Changelog
 
