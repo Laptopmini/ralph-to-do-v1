@@ -34,4 +34,5 @@ sh .github/scripts/ralph.sh
 echo "🚀 Done!"
 
 # Self destruct
-rm -- "${BASH_SOURCE[0]:-$0}"
+FILENAME="${BASH_SOURCE[0]:-$0}"
+git rm -- "$FILENAME" && git commit -m "chore(ai): Remove $FILENAME"

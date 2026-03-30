@@ -70,12 +70,9 @@ while true; do
     CURRENT_TASK=$(grep -m 1 "^\s*- \[ \]" PRD.md || true)
 
     if [ -z "$CURRENT_TASK" ]; then
-        echo "No incomplete tasks found in PRD.md. Cleaning up..."
+        echo "🎉 No incomplete tasks found in PRD.md. Cleaning up..."
 
         rm -rf MEMORY.md
-
-        echo "Archiving PRD..."
-        mkdir -p "$ARCHIVE_FOLDER"
 
         COUNTER=0
         while [[ -f "$ARCHIVE_FOLDER/PRD.$COUNTER.md" ]]; do
@@ -83,8 +80,12 @@ while true; do
         done
 
         ARCHIVE_PATH="$ARCHIVE_FOLDER/PRD.$COUNTER.md"
+        echo "Archiving PRD to $ARCHIVE_PATH..."
+        mkdir -p "$ARCHIVE_FOLDER"
         mv PRD.md "$ARCHIVE_PATH"
-        echo "PRD archived to: $ARCHIVE_PATH"
+
+        git add .
+        git commit -m "chore(ai): Archived PRD & Cleanup"
         break
     fi
 
