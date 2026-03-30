@@ -26,7 +26,7 @@ fi
 touch "$LOCK_FILE"
 trap "rm -f $LOCK_FILE" EXIT
 
-if [[ -n "$1" && "$1" != --* ]]; then
+if [[ -n "${1:-}" && "${1:-}" != --* ]]; then
     MAX_LOOPS="$1"
     shift
 fi
