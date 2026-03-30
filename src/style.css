@@ -1,0 +1,6 @@
+/* Base stylesheet for Ralph HTML app */
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: system-ui, sans-serif;
+}
