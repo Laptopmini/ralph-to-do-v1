@@ -1,6 +1,6 @@
 # ralph-html
 
-A fork of [ralph-node](https://github.com/Laptopmini/ralph-node) with a simple boilerplate to serve static HTML based application.
+A fork of [ralph-node](https://github.com/Laptopmini/ralph-node) with a simple boilerplate to serve a static HTML based application.
 
 Fork this repo and drop in a new `PRD.md` to start building something with the loop already bootstrapped.
 
