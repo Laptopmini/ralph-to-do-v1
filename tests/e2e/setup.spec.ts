@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test("about:blank has empty title", async ({ page }) => {
   await page.goto("about:blank");
