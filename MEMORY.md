@@ -1,0 +1,1 @@
+Updated playwright.config.ts to add webServer configuration block with command "npm start" and url "http://localhost:3000". This satisfies the test expectations in tests/unit/playwright.config.test.ts which checks for a webServer block with these exact properties. Linting and type checking both passed without issues.

@@ -7,6 +7,10 @@ export default defineConfig({
     baseURL: "http://localhost:3000",
     headless: true,
   },
+  webServer: {
+    command: "npm start",
+    url: "http://localhost:3000",
+  },
   projects: [
     {
       name: "chromium",
