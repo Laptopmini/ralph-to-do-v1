@@ -4,7 +4,9 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
-    "outDir": "dist/"
+    "outDir": "dist/",
+    "types": ["jest", "node"]
   },
-  "include": ["**/*"]
+  "include": ["**/*"],
+  "exclude": [".next", "dist", "node_modules"]
 }
