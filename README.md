@@ -4,6 +4,12 @@ A custom implementation of the Ralph Loop for Node.js — a test-gated, autonomo
 
 > This is my Ralph loop. There are many like it, but this one is mine.
 
+1. **PRD-Driven Development** — You write requirements as markdown tasks with test annotations
+2. **Test Backpressure** — Before the AI agent runs, tests are generated from the PRD & reviewed to ensure implementations pass validation
+3. **Autonomous Implementation** — An LLM agent reads the PRD, implements code, and iterates until tests pass
+4. **Automated Validation** — Jest unit tests and Playwright E2E tests gate each task completion
+5. **Commit & Archive** — Completed tasks are checked off, code is committed, and the ledger is updated
+
 ## Why this exists
 
 This repo is an exercise in applied AI engineering — specifically in designing systems where LLM agents operate reliably under constraints. The goals:
