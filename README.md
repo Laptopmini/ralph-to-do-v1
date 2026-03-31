@@ -6,14 +6,9 @@ Fork this repo and drop in a new `PRD.md` to start building something with the l
 
 For full documentation on how the Ralph Loop works and how to use these repos, see the [original ralph-node README](https://github.com/Laptopmini/ralph-node#readme).
 
-## Source
-
-All `ralph-node` repos begin from the same genesis, and branch off a specific upstream in its tree:
-
-- **Genesis:** https://github.com/Laptopmini/ralph-node
-- **Upstream:** https://github.com/Laptopmini/ralph-node-base
-
 ## Changelog
+
+This repo uses [ralph-node-base](https://github.com/Laptopmini/ralph-node-base) as a starting point.
 
 - **TypeScript** — `tsconfig.json` with ES2022 target, NodeNext modules, strict mode, and `dist/` output
 - **Jest** — `jest.config.js` with `@swc/jest` transform scoped to unit tests, plus a sanity test
