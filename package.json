@@ -8,8 +8,8 @@
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "jest",
     "test:e2e": "playwright test",
-    "backpressure": "sh .github/scripts/backpressure.sh",
-    "ralph": "sh .github/scripts/ralph.sh",
+    "backpressure": "bash .github/scripts/backpressure.sh",
+    "ralph": "bash .github/scripts/ralph.sh",
     "lint": "biome check --write .",
     "check-types": "tsc --noEmit"
   },
