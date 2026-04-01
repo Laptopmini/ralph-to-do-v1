@@ -99,6 +99,26 @@ Use `gh pr create` to open a PR:
 
 If a PR already exists for this head/base combination, skip PR creation.
 
+### Step 3 — Output summary
+
+After all tickets have been processed, output ONLY a block in the exact format below with no other text after it:
+
+```
+<branch-name>: <ticket-name>
+```
+
+One line per ticket, where `<branch-name>` is the base branch created for that ticket (e.g., `prd-1`) and `<ticket-name>` is the ticket's name from the `#### Ticket N: <ticket name>` heading.
+
+**Example output** (for a plan with three tickets):
+
+```
+prd-1: Timer Logic Module
+prd-2: UI & Styling
+prd-3: E2E Tests
+```
+
+Do not output any other text after this block. This output is consumed by a bash script and must be machine-readable.
+
 ---
 
 ## PRD Format
