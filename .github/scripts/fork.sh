@@ -45,9 +45,11 @@ git clone "$NEW_REPO"
 cd "$NAME"
 git remote add upstream "$UPSTREAM"
 
+# Set the package name
 npm pkg set name="$NAME"
 
 if command -v code &>/dev/null; then
+  # Open the project in VS Code
   code .
 fi
 
