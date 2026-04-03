@@ -80,12 +80,17 @@ while true; do
 
         rm -rf MEMORY.md
 
-        COUNTER=0
-        while [[ -f "$ARCHIVE_FOLDER/PRD.$COUNTER.md" ]]; do
+        PRD_TITLE=$(head -1 PRD.md | sed -E 's/^#+ (PRD: )?//')
+        PRD_FILENAME=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed -E 's/-+/-/g' | sed -E 's/^-|-$//g')
+
+        ARCHIVE_PATH="$ARCHIVE_FOLDER/PRD.$PRD_FILENAME.md"
+
+        COUNTER=1
+        while [[ -f $ARCHIVE_PATH ]]; do
+            ARCHIVE_PATH="$ARCHIVE_FOLDER/PRD.$PRD_FILENAME.$COUNTER.md"
             ((COUNTER++))
         done
 
-        ARCHIVE_PATH="$ARCHIVE_FOLDER/PRD.$COUNTER.md"
         echo "Archiving PRD to $ARCHIVE_PATH..."
         mkdir -p "$ARCHIVE_FOLDER"
         mv PRD.md "$ARCHIVE_PATH"

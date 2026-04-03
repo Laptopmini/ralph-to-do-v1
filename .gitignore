@@ -35,3 +35,6 @@ vite.config.ts.timestamp-*
 .maestro.lock
 .maestro.log
 .maestro.blueprint.md
+
+# E2E & Unit tests
+test-results/
