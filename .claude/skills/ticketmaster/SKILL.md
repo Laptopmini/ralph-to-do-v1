@@ -97,24 +97,26 @@ Use `gh pr create` to open a PR:
   - The ticket name comes from the `#### Ticket N: <ticket name>` heading in the plan.
 - **Body**: the ticket's description (the blockquote line) followed by its full task list from the plan.
 
-If a PR already exists for this head/base combination, skip PR creation.
+If a PR already exists for this head/base combination, skip PR creation but retrieve its PR number.
+
+**Retain the PR number** returned by `gh pr create` (or from the existing PR) for use in the summary output. You can extract the number from the URL returned by `gh pr create`, or by querying with `gh pr view prd-<ticket-number>-requirements --json number --jq .number`.
 
 ### Step 3 — Output summary
 
 After all tickets have been processed, output ONLY a block in the exact format below with no other text after it:
 
 ```
-<branch-name>: <ticket-name>
+<pr-title> (#<pr-number>)
 ```
 
-One line per ticket, where `<branch-name>` is the base branch created for that ticket (e.g., `prd-1`) and `<ticket-name>` is the ticket's name from the `#### Ticket N: <ticket name>` heading.
+One line per ticket, where `<pr-title>` is the title of the pull request created for that ticket (e.g., `prd(1): Timer Logic Module`), and `<pr-number>` is the pull request number opened (or already existing) for that ticket's requirements branch.
 
 **Example output** (for a plan with three tickets):
 
 ```
-prd-1: Timer Logic Module
-prd-2: UI & Styling
-prd-3: E2E Tests
+prd(1): Timer Logic Module (#12)
+prd(2): UI & Styling (#13)
+prd(3): E2E Tests (#14)
 ```
 
 Do not output any other text after this block. This output is consumed by a bash script and must be machine-readable.
