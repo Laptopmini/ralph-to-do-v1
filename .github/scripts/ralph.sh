@@ -25,7 +25,6 @@ if [ -e "$LOCK_FILE" ]; then
 fi
 
 touch "$LOCK_FILE"
-> "$LOG_FILE"  # Truncate the log file
 trap "rm -f $LOCK_FILE" EXIT
 
 if [[ -n "${1:-}" && "${1:-}" != --* ]]; then
@@ -81,7 +80,7 @@ while true; do
         rm -rf MEMORY.md
 
         PRD_TITLE=$(head -1 PRD.md | sed -E 's/^#+ (PRD: )?//')
-        PRD_FILENAME=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed -E 's/-+/-/g' | sed -E 's/^-|-$//g')
+        PRD_FILENAME=$(echo "$PRD_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed -E 's/-+/-/g' | sed -E 's/^-|-$//g')
 
         ARCHIVE_PATH="$ARCHIVE_FOLDER/PRD.$PRD_FILENAME.md"
 
