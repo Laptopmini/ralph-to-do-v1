@@ -10,4 +10,6 @@
 # Ralph scripts
 .github/scripts/backpressure.sh
 .github/scripts/ralph.sh
+.github/scripts/fork.sh
+.github/scripts/maestro.sh
 .github/prompts/ralph.md

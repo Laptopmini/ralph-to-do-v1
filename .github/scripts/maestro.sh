@@ -50,10 +50,52 @@ prompt() {
     return 0
 }
 
+open_pull_requests() {
+    read -n 1 -s -r -p "💬 Are you ready to review the Pull Requests? Press any key to open in browser..."
+    open $(gh repo view --json url -q ".url + \"/pulls\"")
+}
+
+review_pull_requests() {
+    # FIXME: Could have Claude do an initial review of the PRs to improve user's review/approval
+    open_pull_requests
+    read -n 1 -s -r -p "💬 Once all Pull Requests have been merged, press any key to continue..."
+
+    local UNVERIFIED=true
+    while $UNVERIFIED; do
+        local ALL_MERGED=true
+        while IFS= read -r line; do
+            local PR_NUMBER=$(echo "$line" | grep -oP '(?<=#)\d+(?=\)$)')
+            
+            if [ -z "$PR_NUMBER" ]; then
+                # Unable to extract PR number from line
+                ALL_MERGED=false
+                break
+            fi
+
+            local state=$(gh pr view "$PR_NUMBER" --json state --jq '.state')
+            
+            if [ "$state" != "MERGED" ]; then
+                ALL_MERGED=false
+                break
+            fi
+
+            # Clean up the local branch
+            local BRANCH_NAME=$(gh pr view "$PR_NUMBER" --repo Laptopmini/ralph-maestro-demo --json headRefName --jq '.headRefName')
+            git branch -D "$BRANCH_NAME" || true
+        done <<< "$1"
+
+        if [ "$ALL_MERGED" = false ]; then
+            read -n 1 -s -r -p "💬 Are you sure all Pull Requests have been merged? Press any key to continue when ready..."
+        else
+            UNVERIFIED=false
+        fi
+    done
+}
+
 # ==============================================================================
 
 if [ -e "$LOCK_FILE" ]; then
-    echo "❌ Error: Ralph Loop is already running! Exiting..."
+    echo "❌ Error: Maestro is already running! Exiting..."
     exit 1
 fi
 
@@ -84,34 +126,53 @@ while $MISSING_BLUEPRINT; do
 
     read -p "💬 Does the blueprint look accurate to you to proceed with generating PRD(s) for it? (Y/n): " -r confirm
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        MISSING_BLUEPRINT=false;
+        MISSING_BLUEPRINT=false
+    else
+        rm -f $BLUEPRINT_FILE
     fi
 done
 
-# echo "⚪️ Generating PRD(s)..."
-# $(prompt "/ticketmaster
-# $BLUEPRINT
-# ")
+echo "⚪️ Generating PRD(s)..."
+BRANCHES=$(prompt "/ticketmaster $BLUEPRINT_FILE" --model claude-sonnet-4-6)
 
-# FIXME: The ticketmaster prompt draft needs to indicate the expected output, array of pr names
+review_pull_requests "$BRANCHES"
 
-# FIXME: Prevent blueprint from generating test files as it may conflict with TDD
-# 2. [logic] Create `tests/unit/timer-logic.test.ts` — test `formatTime` (25:00, 00:00, 09:59 edge cases), test `tick` (decrements, does not go below 0), test duration constant equals 1500
-# MAKE IT CREATE A TICKET FOR TEST COVERAGE, GATHER THEM ALL AS PART OF A UNIQUE PRD ALWAYS THE LAST ONE?
+echo "⚪️ Generating backpressure for PRD(s)..."
+REPO_SLUG=$(bash .claude/skills/ticketmaster/scripts/repo-slug.sh) # FIXME: This script shouldnt be nested in this skill if used outside of it
+BACKPRESSURE_BRANCHES=""
+while IFS= read -r line; do
+    BASE_BRANCH_NAME="${line%% (*}"
+    BACKPRESSURE_BRANCH_NAME="$BASE_BRANCH_NAME-backpressure"
 
+    git checkout "$BASE_BRANCH_NAME" && git pull
+    git checkout -b "$BACKPRESSURE_BRANCH_NAME"
+    nvm use && npm i && npm run backpressure
+    git add .
+    git commit -m "chore(ai): Backpressure"
+    git push -u origin "$BACKPRESSURE_BRANCH_NAME"
+    BS_OUTPUT=$(prompt "/summarizer $REPO_SLUG $BACKPRESSURE_BRANCH_NAME $BASE_BRANCH_NAME" --model claude-haiku-4-5)
+    [ -n "$BACKPRESSURE_BRANCHES" ] && BACKPRESSURE_BRANCHES+=$'\n'
+    BACKPRESSURE_BRANCHES+="$BS_OUTPUT"
+done <<< "$BRANCHES"
 
-# ASK IF USER TO HIT ENTER WHEN READY TO REVIEW PRs
-# OPEN PR PAGE URL
+review_pull_requests "$BACKPRESSURE_BRANCHES"
 
-# ASK IF USER FINISHED REVIEWING PRs
-# CHECK IF PRS WERE MERGED
-    # IF YES, BRANCH OUT `prd-X-backpressure` AND RUN BACKPRESSURE, OPEN PR BACK AGAINST `prd-X`
-    # IF NO, ERROR OUT?
+echo "⚪️ Proceeding with implementation of PRD(s)..."
+while IFS= read -r line; do
+    BASE_BRANCH_NAME="${line%% (*}"
 
-# ASK IF USER TO HIT ENTER WHEN READY TO REVIEW PRs
-# OPEN PR PAGE URL
+    git checkout "$BASE_BRANCH_NAME" && git pull
+    nvm use && npm i && npm run ralph
+    git add .
+    git commit -m "chore(ai): Update Ralph log"
+    git push -u origin "$BASE_BRANCH_NAME"
+    prompt "/summarizer $REPO_SLUG $BASE_BRANCH_NAME main" --model claude-haiku-4-5
+done <<< "$BACKPRESSURE_BRANCHES"
 
-# ASK IF USER FINISHED REVIEWING PRs
-    # IF YES, For each `dev-prd-X` branch, execute `ralph.sh` in parallel and open PR against `main`.
+open_pull_requests
+
+# FIXME: Add sample output to summarizer skill
+
+git checkout main
 
 echo "✅ Done!."

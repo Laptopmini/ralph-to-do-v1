@@ -112,20 +112,20 @@ If a PR already exists for this head/base combination, skip PR creation but retr
 After all tickets have been processed, output ONLY a block in the exact format below with no other text after it:
 
 ```
-<pr-title> (#<pr-number>)
+<base-branch-name> (#<pr-number>)
 ```
 
-One line per ticket, where `<pr-title>` is the title of the pull request created for that ticket (e.g., `prd(1): Timer Logic Module`), and `<pr-number>` is the pull request number opened (or already existing) for that ticket's requirements branch.
+One line per ticket, where `<base-branch-name>` is the name `prd-<ticket-number>` of the base branch created for that ticket during Step 2a (e.g., `prd-1`), and `<pr-number>` is the pull request number opened (or already existing) for that ticket's requirements branch.
 
 **Example output** (for a plan with three tickets):
 
 ```
-prd(1): Timer Logic Module (#12)
-prd(2): UI & Styling (#13)
-prd(3): E2E Tests (#14)
+prd-1 (#12)
+prd-2 (#13)
+prd-3 (#14)
 ```
 
-Do not output any other text after this block. This output is consumed by a bash script and must be machine-readable.
+Do not output any other text BEFORE or AFTER this block. This output is consumed by a bash script and must be machine-readable.
 
 ---
 

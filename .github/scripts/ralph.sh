@@ -148,7 +148,7 @@ $PRD_CONTENT
     ENGINE_EXIT=0
     if [[ "$ENGINE" == "claude" ]]; then
         set +e
-        OUTPUT=$(claude -p "$AGENT_PROMPT" --allowedTools "Read,Edit,Write,Glob,Grep,Bash")
+        OUTPUT=$(claude -p "$AGENT_PROMPT" --allowedTools "Read,Edit,Write,Glob,Grep,Bash" --model claude-sonnet-4-6)
         ENGINE_EXIT=$?
         set -e
 
