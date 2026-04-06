@@ -27,7 +27,8 @@ npm install -D @playwright/test jest @types/jest @biomejs/biome@2.4.8 typescript
 npx playwright install chromium
 
 # Move the init PRD to the root
-mv .prds/init.md PRD.md
+mv docs/initialize-ralph-node/PRD.md PRD.md
+rm -rf docs/initialize-ralph-node
 
 # Execute initial ralph loop
 bash .github/scripts/ralph.sh

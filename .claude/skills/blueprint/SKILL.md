@@ -136,7 +136,25 @@ This ensures the implementation does not leave behind broken or misleading tests
 
 ### Step 6 — Write the plan
 
-Follow the output format below exactly.
+Write the plan to `.maestro.blueprint.md`, following the output format below exactly. The file content must match the output format — nothing before, nothing after. Do NOT print the plan to the chat.
+
+### Step 7 — Output parallel execution levels
+
+After writing the plan file, compute the dependency tree levels for the tickets and print them to the chat. A "level" is a set of tickets whose dependencies are all satisfied by tickets in earlier levels (level 0 = tickets with no dependencies).
+
+Algorithm:
+1. Level 0: all tickets with no `depends_on`
+2. Level N: all tickets whose `depends_on` are entirely contained in levels 0..N-1
+3. Repeat until all tickets are placed
+
+Print one line per level, with comma-separated ticket numbers (no spaces, ascending order). For example, given Ticket 1 (no deps), Ticket 2 (no deps), Ticket 3 (depends on 1), Ticket 4 (depends on 2), print exactly:
+
+```
+1,2
+3,4
+```
+
+**CRITICAL:** The execution levels are the ONLY thing the skill prints to the chat. No preamble, no explanation, no acknowledgement, no trailing text, no code fences — just the raw level lines. The entire chat output from start to finish must be exclusively these lines so a bash script can consume it directly.
 
 ---
 

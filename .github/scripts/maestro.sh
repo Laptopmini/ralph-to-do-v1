@@ -9,49 +9,16 @@ set -euo pipefail
 
 # Settings
 LOCK_FILE=".maestro.lock"
-LOG_FILE=".maestro.log"
+LOG_FILE="tmp/maestro.log"
 BLUEPRINT_FILE=".maestro.blueprint.md"
 ENGINE="claude" # FIXME: Use env variable `ENGINE` with default value `claude`
 
 # Functions
 
-prompt() {
-    # FIXME: Make this a reusable script which can be called from other scripts
-    local AGENT_PROMPT="$1"
-    shift
-    local EXTRA_ARGS="$@"
-
-    echo "🟡 Handing control to $ENGINE..."  >&2
-    local OUTPUT=""
-    local ENGINE_EXIT=0
-    if [[ "$ENGINE" == "claude" ]]; then
-        set +e
-        OUTPUT=$(claude -p "$AGENT_PROMPT" $EXTRA_ARGS)
-        ENGINE_EXIT=$?
-        set -e
-
-        if [[ "$OUTPUT" == *"rate_limit_error"* ]] || [[ "$OUTPUT" == *"insufficient_quota"* ]] || [[ "$OUTPUT" == *"credit balance"* ]]; then
-            echo "🟠 Claude rate limit exceeded." >&2
-            exit 1
-        fi
-    else
-        set +e
-        OUTPUT=$(opencode run "$AGENT_PROMPT" $EXTRA_ARGS)
-        ENGINE_EXIT=$?
-        set -e
-    fi
-
-    if [[ $ENGINE_EXIT -ne 0 ]]; then
-        echo "🟠 Engine exited with code $ENGINE_EXIT." >&2
-        exit 1
-    fi
-
-    echo "$OUTPUT"
-    return 0
-}
+prompt() { bash .github/scripts/prompt.sh "$@"; }
 
 open_pull_requests() {
-    read -n 1 -s -r -p "💬 Are you ready to review the Pull Requests? Press any key to open in browser..."
+    read -n 1 -s -r -p "💬 Are you ready to review the Pull Request(s)? Press any key to open in browser..."
     open $(gh repo view --json url -q ".url + \"/pulls\"")
 }
 
@@ -63,8 +30,8 @@ review_pull_requests() {
     local UNVERIFIED=true
     while $UNVERIFIED; do
         local ALL_MERGED=true
-        while IFS= read -r line; do
-            local PR_NUMBER=$(echo "$line" | grep -oP '(?<=#)\d+(?=\)$)')
+        while IFS= read -r LINE; do
+            local PR_NUMBER=$(echo "$LINE" | sed 's/.*#\([0-9]*\)).*/\1/')
             
             if [ -z "$PR_NUMBER" ]; then
                 # Unable to extract PR number from line
@@ -79,9 +46,13 @@ review_pull_requests() {
                 break
             fi
 
+            # FIXME: Remove hard-coded repo and leverage repo-slug.sh when this is its own script
+
             # Clean up the local branch
             local BRANCH_NAME=$(gh pr view "$PR_NUMBER" --repo Laptopmini/ralph-maestro-demo --json headRefName --jq '.headRefName')
-            git branch -D "$BRANCH_NAME" || true
+            if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
+                git branch -D "$BRANCH_NAME"
+            fi
         done <<< "$1"
 
         if [ "$ALL_MERGED" = false ]; then
@@ -92,6 +63,14 @@ review_pull_requests() {
     done
 }
 
+cleanup() {
+    local exit_code=$?
+    rm -f "$LOCK_FILE" "$LOG_FILE"
+    if [[ $exit_code -eq 0 ]]; then
+        rm -f "$BLUEPRINT_FILE"
+    fi
+}
+
 # ==============================================================================
 
 if [ -e "$LOCK_FILE" ]; then
@@ -100,7 +79,7 @@ if [ -e "$LOCK_FILE" ]; then
 fi
 
 touch "$LOCK_FILE"
-trap "rm -f $LOCK_FILE $BLUEPRINT_FILE" EXIT
+trap cleanup EXIT
 
 if ! command -v $ENGINE &> /dev/null; then
     echo "❌ Error: $ENGINE CLI is not installed."
@@ -109,70 +88,131 @@ fi
 
 if [ -z "$*" ]; then
     echo "❌ Error: No feature(s) request paragraph/description provided."
-    echo "Usage: $0 [MAX_LOOPS] [--engine claude|opencode]"
+    echo "Usage: $0 [Your feature request paragraph]"
     exit 1
 fi
 
+# Capture all output to the log file
+exec > >(tee -a "$LOG_FILE")
+exec 2>&1
+
 echo "🟢 Beginning orchestration..."
 
-MISSING_BLUEPRINT=true;
+TREE_LEVELS=""
+FOLDER_NAME=""
+FINAL_BLUEPRINT_FILE=""
+MISSING_BLUEPRINT=true
 while $MISSING_BLUEPRINT; do
-    echo "⚪️ Generating implementation plan blueprint..."
-    prompt "/blueprint $*" --model claude-opus-4-6 > $BLUEPRINT_FILE
+    echo "⚪️ Generating implementation plan..."
+    TREE_LEVELS=$(prompt "/blueprint $*" --model claude-opus-4-6)
+
+    FOLDER_NAME="docs/$(head -1 "$BLUEPRINT_FILE" | sed 's/## Implementation Plan: //g' | tr ' ' '-' | tr '[:upper:]' '[:lower:]')"
+
+    COUNTER=0
+    BASE="$FOLDER_NAME"
+    while [[ -e "$FOLDER_NAME" ]]; do
+        COUNTER=$((COUNTER + 1))
+        FOLDER_NAME="${BASE}-${COUNTER}"
+    done
+
+    mkdir -p "$FOLDER_NAME"
+
+    FINAL_BLUEPRINT_FILE="$FOLDER_NAME/blueprint.md"
+    mv "$BLUEPRINT_FILE" "$FINAL_BLUEPRINT_FILE"
+
+    echo "⚪️ Created $FINAL_BLUEPRINT_FILE!"
 
     if command -v code &>/dev/null; then
-        code $BLUEPRINT_FILE
+        code "$FINAL_BLUEPRINT_FILE"
     fi
 
     read -p "💬 Does the blueprint look accurate to you to proceed with generating PRD(s) for it? (Y/n): " -r confirm
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
         MISSING_BLUEPRINT=false
     else
-        rm -f $BLUEPRINT_FILE
+        rm -rf "$BLUEPRINT_FILE" "$FOLDER_NAME"
     fi
 done
 
-echo "⚪️ Generating PRD(s)..."
-BRANCHES=$(prompt "/ticketmaster $BLUEPRINT_FILE" --model claude-sonnet-4-6)
+REPO_SLUG=$(bash .github/scripts/repo-slug.sh)
 
-review_pull_requests "$BRANCHES"
+echo "⚪️ Proceeding through implementation tree levels..."
+while IFS= read -r LEVEL; do
+    echo "⚪️ [$LEVEL] Generating PRD(s)..."
+    BRANCHES=$(prompt "/ticketmaster $FINAL_BLUEPRINT_FILE $LEVEL" --model claude-sonnet-4-6)
+    echo "⚪️ Finished creating branches and PRDs for current level."
 
-echo "⚪️ Generating backpressure for PRD(s)..."
-REPO_SLUG=$(bash .claude/skills/ticketmaster/scripts/repo-slug.sh) # FIXME: This script shouldnt be nested in this skill if used outside of it
-BACKPRESSURE_BRANCHES=""
-while IFS= read -r line; do
-    BASE_BRANCH_NAME="${line%% (*}"
-    BACKPRESSURE_BRANCH_NAME="$BASE_BRANCH_NAME-backpressure"
+    review_pull_requests "$BRANCHES"
 
-    git checkout "$BASE_BRANCH_NAME" && git pull
-    git checkout -b "$BACKPRESSURE_BRANCH_NAME"
-    nvm use && npm i && npm run backpressure
-    git add .
-    git commit -m "chore(ai): Backpressure"
-    git push -u origin "$BACKPRESSURE_BRANCH_NAME"
-    BS_OUTPUT=$(prompt "/summarizer $REPO_SLUG $BACKPRESSURE_BRANCH_NAME $BASE_BRANCH_NAME" --model claude-haiku-4-5)
-    [ -n "$BACKPRESSURE_BRANCHES" ] && BACKPRESSURE_BRANCHES+=$'\n'
-    BACKPRESSURE_BRANCHES+="$BS_OUTPUT"
-done <<< "$BRANCHES"
+    echo "⚪️ [$LEVEL] Generating backpressure..."
+    BACKPRESSURE_BRANCHES=""
+    while IFS= read -r LINE; do
+        BASE_BRANCH_NAME="${LINE%% (*}"
+        BACKPRESSURE_BRANCH_NAME="$BASE_BRANCH_NAME-backpressure"
 
-review_pull_requests "$BACKPRESSURE_BRANCHES"
+        # Fail-fast: if any backpressure loop fails, abort the entire run
+        git checkout "$BASE_BRANCH_NAME" && git pull
+        git checkout -b "$BACKPRESSURE_BRANCH_NAME"
+        npm i && npm run backpressure
+        git add .
+        git diff --cached --quiet || git commit -m "chore(ai): Backpressure"
+        git push -u origin "$BACKPRESSURE_BRANCH_NAME"
 
-echo "⚪️ Proceeding with implementation of PRD(s)..."
-while IFS= read -r line; do
-    BASE_BRANCH_NAME="${line%% (*}"
+        BS_OUTPUT=$(prompt "/summarizer $REPO_SLUG $BACKPRESSURE_BRANCH_NAME $BASE_BRANCH_NAME" --model claude-haiku-4-5)
+        [ -n "$BACKPRESSURE_BRANCHES" ] && BACKPRESSURE_BRANCHES+=$'\n'
+        BACKPRESSURE_BRANCHES+="$BS_OUTPUT"
 
-    git checkout "$BASE_BRANCH_NAME" && git pull
-    nvm use && npm i && npm run ralph
-    git add .
-    git commit -m "chore(ai): Update Ralph log"
-    git push -u origin "$BASE_BRANCH_NAME"
-    prompt "/summarizer $REPO_SLUG $BASE_BRANCH_NAME main" --model claude-haiku-4-5
-done <<< "$BACKPRESSURE_BRANCHES"
+        echo "⚪️ [$LEVEL] Generated backpressure for \"$BASE_BRANCH_NAME\"."
+    done <<< "$BRANCHES"
+
+    review_pull_requests "$BACKPRESSURE_BRANCHES"
+
+    echo "⚪️ [$LEVEL] Proceeding with implementation..."
+    IMPLEMENTATION_BRANCHES=""
+    while IFS= read -r LINE; do
+        BASE_BRANCH_NAME="${LINE%% (*}"
+
+        # Fail-fast: if any ralph loop fails, abort the entire run
+        git checkout "$BASE_BRANCH_NAME" && git pull
+        npm i && npm run ralph
+        git add .
+        git diff --cached --quiet || git commit -m "chore(ai): Update Ralph log"
+        git push -u origin "$BASE_BRANCH_NAME"
+
+        BS_OUTPUT=$(prompt "/summarizer $REPO_SLUG $BASE_BRANCH_NAME maestro" --model claude-haiku-4-5)
+        [ -n "$IMPLEMENTATION_BRANCHES" ] && IMPLEMENTATION_BRANCHES+=$'\n'
+        IMPLEMENTATION_BRANCHES+="$BS_OUTPUT"
+
+        echo "⚪️ [$LEVEL] Implementation for \"$BASE_BRANCH_NAME\" completed."
+    done <<< "$BACKPRESSURE_BRANCHES"
+
+    review_pull_requests "$IMPLEMENTATION_BRANCHES"
+done <<< "$TREE_LEVELS"
+echo "⚪️ Completed implementation plan!"
+
+# ---
+
+# FIXME: Update CLAUDE.md
+
+# FIXME: Update README.md
+
+# ---
+
+echo "⚪️ Committing log and opening final PR..."
+git checkout maestro && git pull
+mv "$LOG_FILE" "$FOLDER_NAME/maestro.log"
+git add .
+git commit -m "chore(ai): Add Maestro log"
+git push -u origin maestro
+
+# FIXME: Summarizer needs to accept branches not using `prd-1` format, and determin another commit slug for it
+# either `feat(<ticket-number>)` or `feat(ai)`
+
+prompt "/summarizer $REPO_SLUG maestro main" --model claude-haiku-4-5
 
 open_pull_requests
 
-# FIXME: Add sample output to summarizer skill
-
+echo "⚪️ Switching back to main..."
 git checkout main
 
-echo "✅ Done!."
+echo "✅ Done!"

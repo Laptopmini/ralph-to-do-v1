@@ -21,14 +21,20 @@ Converts an implementation plan into per-ticket branches, PRD files, and pull re
 This skill is triggered exclusively by the slash command:
 
 ```
-/ticketmaster <path-to-implementation-plan.md>
+/ticketmaster <path-to-implementation-plan.md> <ticket-numbers>
 ```
 
-If the user types `/ticketmaster` with no argument, respond:
+`<ticket-numbers>` is a comma-separated list of ticket ordinals to process (e.g. `1`, `2,3`, `1,3,4`).
 
-> "Please provide a path to an implementation plan. Example: `/ticketmaster .claude/skills/blueprint/examples/sample.md`"
+If the user types `/ticketmaster` with no path argument, respond:
 
-Do not run the workflow in that case.
+> "Please provide a path to an implementation plan. Example: `/ticketmaster .claude/skills/blueprint/examples/sample.md 1,2`"
+
+If the user provides a path but no ticket numbers, respond:
+
+> "Please provide ticket numbers to process. Example: `/ticketmaster .claude/skills/blueprint/examples/sample.md 1,2`"
+
+Do not run the workflow in either case.
 
 ---
 
@@ -36,7 +42,26 @@ Do not run the workflow in that case.
 
 ### Step 0 — Parse the command
 
-Extract the file path from everything after `/ticketmaster ` in the user's message. Read that file. If the file does not exist or is empty, tell the user and stop.
+The user's message has the form `/ticketmaster <file-path> <ticket-numbers>`. Extract both arguments:
+
+- `<ticket-numbers>`: the **last** whitespace-delimited token. Parse it as a comma-separated list of integers (e.g. `2,3` → `[2, 3]`).
+- `<file-path>`: everything between `/ticketmaster ` and the last whitespace-delimited token.
+
+If either argument is missing, respond with the corresponding error message from the **Invocation** section and stop. Read the file at `<file-path>`. If the file does not exist or is empty, tell the user and stop.
+
+### Step 0.5 — Create or checkout the `maestro` branch
+
+Before processing any tickets, ensure the shared `maestro` accumulation branch exists and is up to date:
+
+```bash
+git checkout main
+git pull origin main
+git checkout maestro 2>/dev/null || git checkout -b maestro
+git pull origin maestro 2>/dev/null || true
+git push -u origin maestro 2>/dev/null || true
+```
+
+If `maestro` already exists (locally or on the remote), check it out, pull to accept any remote changes, and continue. Do not error.
 
 ### Step 1 — Parse the implementation plan
 
@@ -49,15 +74,15 @@ Number each ticket by its ordinal position in the plan (1, 2, 3, ...). This ordi
 
 ### Step 2 — Process tickets sequentially
 
-For each ticket, in order from first to last, perform the following steps. Do **not** process tickets in parallel — each ticket involves git operations that must complete before the next begins.
+For each ticket whose number appears in the parsed `<ticket-numbers>` list, in ascending order, perform the following steps. Tickets not in the list are silently skipped. Do **not** process tickets in parallel — each ticket involves git operations that must complete before the next begins.
 
 #### 2a — Create the base branch
 
-Create a branch called `prd-<ticket-number>` from `main`.
+Create a branch called `prd-<ticket-number>` from `maestro`.
 
 ```bash
-git checkout main
-git pull origin main
+git checkout maestro
+git pull origin maestro
 git checkout -b prd-<ticket-number>
 git push -u origin prd-<ticket-number>
 ```
@@ -92,7 +117,7 @@ git push -u origin prd-<ticket-number>-requirements
 First, determine the GitHub `owner/repo` slug for use with `gh`:
 
 ```bash
-REPO_SLUG=$(bash .claude/skills/ticketmaster/scripts/repo-slug.sh)
+REPO_SLUG=$(bash .github/scripts/repo-slug.sh)
 ```
 
 Then use `gh pr create` to open a PR, passing `--repo "$REPO_SLUG"`:

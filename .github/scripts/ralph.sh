@@ -10,7 +10,6 @@ set -euo pipefail
 # Settings
 ARCHIVE_FOLDER=".prds"
 LOCK_FILE=".ralph.lock"
-LOG_FILE=".ralph.log"
 
 # Options
 ENGINE="claude"
@@ -18,6 +17,10 @@ MAX_LOOPS=10
 
 # Variables
 LOOP_COUNTER=0
+
+prompt() { bash .github/scripts/prompt.sh "$@"; }
+
+# ==============================================================================
 
 if [ -e "$LOCK_FILE" ]; then
     echo "❌ Error: Ralph Loop is already running! Exiting..."
@@ -60,10 +63,6 @@ if [ ! -f PRD.md ]; then
     exit 1
 fi
 
-# Capture all output to the log file
-exec > >(tee -a "$LOG_FILE")
-exec 2>&1
-
 echo "🟢 Starting Ralph Loop for at most $MAX_LOOPS iterations, using $ENGINE..."
 
 ERROR_FEEDBACK=""
@@ -82,6 +81,8 @@ while true; do
         PRD_TITLE=$(head -1 PRD.md | sed -E 's/^#+ (PRD: )?//')
         PRD_FILENAME=$(echo "$PRD_TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed -E 's/-+/-/g' | sed -E 's/^-|-$//g')
 
+        # FIXME: THIS WONT WORK ANYMORE
+        # It needs to be a docs path
         ARCHIVE_PATH="$ARCHIVE_FOLDER/PRD.$PRD_FILENAME.md"
 
         COUNTER=1
@@ -144,32 +145,28 @@ $PRD_CONTENT
     ERROR_FEEDBACK=""
 
     echo "🟡 Handing control to $ENGINE..."
-    OUTPUT=""
-    ENGINE_EXIT=0
-    if [[ "$ENGINE" == "claude" ]]; then
-        set +e
-        OUTPUT=$(claude -p "$AGENT_PROMPT" --allowedTools "Read,Edit,Write,Glob,Grep,Bash" --model claude-sonnet-4-6)
-        ENGINE_EXIT=$?
-        set -e
+    set +e
+    OUTPUT=$(prompt "$AGENT_PROMPT" \
+        --allowedTools "Read,Edit,Write,Glob,Grep,Bash" \
+        --model claude-sonnet-4-6)
+    PROMPT_EXIT=$?
+    set -e
 
-        if [[ "$OUTPUT" == *"rate_limit_error"* ]] || [[ "$OUTPUT" == *"insufficient_quota"* ]] || [[ "$OUTPUT" == *"credit balance"* ]]; then
-            echo "🟠 Claude rate limit exceeded. Waiting for 1 hour..."
-            sleep 3600 # 1 hour
-            LOOP_COUNTER=$((LOOP_COUNTER-1))
+    case $PROMPT_EXIT in
+        0)
+            ;;  # Prompt succeeded
+        2)
+            echo "🟠 Rate limit hit. Waiting 1 hour..."
+            sleep 3600
+            LOOP_COUNTER=$((LOOP_COUNTER - 1))
             continue
-        fi
-    else
-        set +e
-        OUTPUT=$(opencode run "$AGENT_PROMPT")
-        ENGINE_EXIT=$?
-        set -e
-    fi
-
-    if [[ $ENGINE_EXIT -ne 0 ]]; then
-        echo "🟠 Engine exited with code $ENGINE_EXIT. Retrying..."
-        sleep 5
-        continue
-    fi
+            ;;
+        *)
+            echo "🟠 Engine failed (exit $PROMPT_EXIT). Retrying in 5s..."
+            sleep 5
+            continue
+            ;;
+    esac
 
     echo "Agent finished. Extracting proposed state updates..."
     PROPOSED_MEMORY=$(echo "$OUTPUT" | awk '/<memory>/{flag=1; next} /<\/memory>/{flag=0} flag')
@@ -204,9 +201,13 @@ $PRD_CONTENT
             echo "$PROPOSED_MEMORY" > MEMORY.md
             echo -e "Memory Updated:\n$PROPOSED_MEMORY"
         fi
-        
+
         if [ -n "$PROPOSED_LEDGER" ]; then
-            CURRENT_TASK_LABEL=$(printf '%s' "$PROPOSED_LEDGER" | tr -d '\n' | sed -nE 's/.*"task"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
+            PROPOSED_LEDGER=$(printf '%s' "$PROPOSED_LEDGER" | tr -d '\n')
+            CURRENT_TASK_LABEL=$(printf '%s' "$PROPOSED_LEDGER" | sed -nE 's/.*"task"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
+            if [ -s .agent-ledger.jsonl ] && [ -n "$(tail -c1 .agent-ledger.jsonl)" ]; then
+                echo >> .agent-ledger.jsonl
+            fi
             echo "$PROPOSED_LEDGER" >> .agent-ledger.jsonl
             echo -e "Ledger Entry Added:\n$PROPOSED_LEDGER"
         fi

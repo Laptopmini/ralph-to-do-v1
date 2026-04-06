@@ -15,5 +15,5 @@ Implements a pure TypeScript module (`src/timer.ts`) that encapsulates Pomodoro 
 - **src/timer.ts** (new) — PomodoroTimer class implementation with interval-based countdown logic
 - **tests/unit/create-pomodoro-timer-class.test.ts** (new) — Complete unit test suite with mocked interval callbacks
 - **.agent-ledger.jsonl** — Added ledger entry for completed task
-- **.prds/PRD.timer-logic-module.md** (new) — Archived PRD for reference
+- **docs/pomodoro-timer/PRD.timer-logic-module.md** (new) — Archived PRD for reference
 - **.ralph.log** — Added Ralph Loop execution logs
