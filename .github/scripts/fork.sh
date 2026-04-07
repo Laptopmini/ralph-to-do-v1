@@ -30,6 +30,9 @@ git clone --bare "$UPSTREAM" "$BARE_CLONE"
 # Create a new empty repo on GitHub
 gh repo create "$NAMESPACE/$NAME" --public
 
+# Avoid a race condition
+sleep 3
+
 # Mirror-push everything to the new repo
 cd "$BARE_CLONE"
 git push --mirror "$NEW_REPO"
@@ -46,7 +49,7 @@ cd "$NAME"
 git remote add upstream "$UPSTREAM"
 
 # Set the package name
-npm pkg set name="$NAME"
+npm pkg set name="$NAME" || true
 
 if command -v code &>/dev/null; then
   # Open the project in VS Code

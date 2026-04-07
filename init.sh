@@ -28,10 +28,9 @@ npx playwright install chromium
 
 # Move the init PRD to the root
 mv docs/initialize-ralph-node/PRD.md PRD.md
-rm -rf docs/initialize-ralph-node
 
 # Execute initial ralph loop
-bash .github/scripts/ralph.sh
+bash .github/scripts/ralph.sh docs/initialize-ralph-node
 
 echo "🚀 Done!"
 
