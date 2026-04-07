@@ -43,9 +43,11 @@ Extract `<file-path>` from the user's message (everything after `/ticketmaster `
 Before processing any tickets, ensure the shared `maestro` accumulation branch exists and is up to date:
 
 ```bash
+git fetch origin --prune
 git checkout main
 git pull origin main
 git checkout maestro 2>/dev/null || git checkout -b maestro
+git merge main
 git pull origin maestro 2>/dev/null || true
 git push -u origin maestro 2>/dev/null || true
 ```
