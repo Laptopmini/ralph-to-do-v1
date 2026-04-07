@@ -22,6 +22,17 @@ This repo uses [ralph-html](https://github.com/Laptopmini/ralph-html) as a start
 - **Static HTML website** — Configured to serve a static HTML based application
 - **Playwright webServer** — Updated Playwright configuration with webServer block for proper test execution
 
+## Stack
+
+| Tool | Role |
+|------|------|
+| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | Default AI engine |
+| [OpenCode](https://opencode.ai/docs) | Alternative AI engine |
+| [Jest](https://jestjs.io/) | Unit testing |
+| [Playwright](https://playwright.dev/) | E2E testing |
+| [Biome](https://biomejs.dev/) | Linting and formatting |
+| [serve](https://github.com/vercel/serve) | Static File Server |
+
 ## License
 
 Apache 2.0
