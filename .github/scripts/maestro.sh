@@ -11,6 +11,7 @@ set -euo pipefail
 
 LOCK_FILE=".maestro.lock"
 LOG_FILE="/tmp/maestro.log"
+LOG_FILE_BACKUP="maestro.log"
 BLUEPRINT_FILE=".maestro.blueprint.md"
 BLUEPRINT_LEVELS_FILE=".maestro.blueprint.levels"
 REPO_SLUG=$(bash .github/scripts/repo-slug.sh)
@@ -21,8 +22,10 @@ prompt() { bash .github/scripts/prompt.sh "$@"; }
 
 summarizer() { prompt "/summarizer $*" --allowedTools "Read,Bash(git diff:*),Bash(gh pr create:*),Bash(gh pr view:*)" --model claude-haiku-4-5; }
 
+ask_continue() { read -n 1 -s -r -p "$@" < /dev/tty; }
+
 view_pull_requests() {
-    read -n 1 -s -r -p "💬 Are you ready to review the Pull Request(s)? Press any key to open in browser..."
+    ask_continue "💬 Are you ready to review the Pull Request(s)? Press any key to open in browser..."
     local url
     url=$(gh repo view --json url -q ".url + \"/pulls\"")
     if command -v xdg-open &>/dev/null; then
@@ -40,7 +43,7 @@ view_pull_requests() {
 review_pull_requests() {
     # FIXME: Could have Claude do an initial review of the PRs to improve user's review/approval
     view_pull_requests
-    read -n 1 -s -r -p "💬 Once all Pull Requests have been merged, press any key to continue..."
+    ask_continue "💬 Once all Pull Requests have been merged, press any key to continue..."
 
     local UNVERIFIED=true
     while $UNVERIFIED; do
@@ -66,7 +69,7 @@ review_pull_requests() {
         done <<< "$1"
 
         if [ "$ALL_MERGED" = false ]; then
-            read -n 1 -s -r -p "💬 Are you sure all Pull Requests have been merged? Press any key to continue when ready..."
+            ask_continue "💬 Are you sure all Pull Requests have been merged? Press any key to continue when ready..."
         else
             UNVERIFIED=false
         fi
@@ -100,6 +103,12 @@ if [ ! -s "$BLUEPRINT_FILE" ] || [ ! -s "$BLUEPRINT_LEVELS_FILE" ]; then
     fi
 fi
 
+# Move the log file backup to the main log file if it exists
+if [[ -s "${LOG_FILE_BACKUP:-}" ]]; then
+    mv -f "$LOG_FILE_BACKUP" "$LOG_FILE"
+else
+    rm -f "$LOG_FILE_BACKUP"
+fi
 # Capture all output to the log file
 exec > >(tee -a "$LOG_FILE")
 exec 2>&1
@@ -108,7 +117,6 @@ echo "🟢 Beginning orchestration..."
 
 TREE_LEVELS=""
 FOLDER_NAME=""
-FINAL_BLUEPRINT_FILE=""
 MISSING_BLUEPRINT=true
 REUSING_EXISTING_PLAN=false
 while $MISSING_BLUEPRINT; do
@@ -139,7 +147,10 @@ while $MISSING_BLUEPRINT; do
         echo "⚪️ Using implementation plan from $BLUEPRINT_FILE."
     fi
 
-    read -p "💬 Do you wish to proceed with the implementation plan? (Y/n): " -r confirm
+    # Capture the log file in case the user quits the program here to execute later
+    cp -f "$LOG_FILE" "$LOG_FILE_BACKUP"
+    read -p "💬 Do you wish to proceed with the implementation plan? (Y/n): " -r confirm < /dev/tty
+    rm -f "$LOG_FILE_BACKUP"
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
         MISSING_BLUEPRINT=false
     else
@@ -172,15 +183,10 @@ while $MISSING_BLUEPRINT; do
     done
 
     mkdir -p "$FOLDER_NAME"
-
-    FINAL_BLUEPRINT_FILE="$FOLDER_NAME/plan.md"
-    mv "$BLUEPRINT_FILE" "$FINAL_BLUEPRINT_FILE"
-    mv "$BLUEPRINT_LEVELS_FILE" "$FOLDER_NAME/plan.levels"
-
-    echo "⚪️ Created $FOLDER_NAME!"
+    echo "⚪️ Created \"$FOLDER_NAME\"!"
 done
 
-if [[ -z "$FINAL_BLUEPRINT_FILE" ]]; then
+if [[ -s "$BLUEPRINT_FILE" ]]; then
     echo "❌ Error: An issue occurred while preparing the implementation plan and its related files. Aborting."
     exit 1
 fi
@@ -188,7 +194,7 @@ fi
 echo "⚪️ Proceeding through implementation tree levels..."
 while IFS= read -r LEVEL; do
     echo "⚪️ [$LEVEL] Generating PRD(s)..."
-    BRANCHES=$(prompt "/ticketmaster $FINAL_BLUEPRINT_FILE $LEVEL" --allowedTools "Read,Write,Bash,Glob,Grep" --model claude-sonnet-4-6)
+    BRANCHES=$(prompt "/ticketmaster $BLUEPRINT_FILE $LEVEL" --allowedTools "Read,Write,Bash,Glob,Grep" --model claude-sonnet-4-6)
     if [[ -z "$BRANCHES" ]]; then
         echo "❌ Error: Ticketmaster agent returned no branches for level [$LEVEL]. Aborting."
         exit 1
@@ -249,24 +255,18 @@ while IFS= read -r LEVEL; do
 
     review_pull_requests "$IMPLEMENTATION_BRANCHES"
 done <<< "$TREE_LEVELS"
-echo "⚪️ Completed implementation plan!"
 
-# ---
-
-# FIXME: Update CLAUDE.md
-
-# FIXME: Update README.md
-
-# ---
-
-echo "⚪️ Committing log and opening final PR..."
+echo "⚪️ Completed implementation plan. Archiving plan and log..."
 git checkout maestro && git pull
-mv "$LOG_FILE" "$FOLDER_NAME/maestro.log"
+mv -f "$BLUEPRINT_FILE" "$FOLDER_NAME/plan.md"
+mv -f "$BLUEPRINT_LEVELS_FILE" "$FOLDER_NAME/plan.levels"
+mv -f "$LOG_FILE" "$FOLDER_NAME/maestro.log"
 git add .
 git commit -m "chore(ai): Add Maestro log"
 git push -u origin maestro
-summarizer "$REPO_SLUG" maestro main
 
+echo "⚪️ Opening final PR..."
+summarizer "$REPO_SLUG" maestro main
 view_pull_requests
 
 echo "⚪️ Switching back to main..."

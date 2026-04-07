@@ -28,11 +28,11 @@ This skill is triggered exclusively by the slash command:
 
 If the user types `/ticketmaster` with no path argument, respond:
 
-> "Please provide a path to an implementation plan. Example: `/ticketmaster .claude/skills/blueprint/examples/sample.md 1,2`"
+> "Please provide a path to an implementation plan. Example: `/ticketmaster .claude/skills/blueprint/examples/sample.md 1`"
 
 If the user provides a path but no ticket numbers, respond:
 
-> "Please provide ticket numbers to process. Example: `/ticketmaster .claude/skills/blueprint/examples/sample.md 1,2`"
+> "Please provide ticket numbers to process. Example: `/ticketmaster .claude/skills/blueprint/examples/sample.md 2,3`"
 
 Do not run the workflow in either case.
 
@@ -48,6 +48,8 @@ The user's message has the form `/ticketmaster <file-path> <ticket-numbers>`. Ex
 - `<file-path>`: everything between `/ticketmaster ` and the last whitespace-delimited token.
 
 If either argument is missing, respond with the corresponding error message from the **Invocation** section and stop. Read the file at `<file-path>`. If the file does not exist or is empty, tell the user and stop.
+
+**The parsed list is exhaustive and exclusive.** Process exactly those ticket numbers — no more, no fewer — even if other tickets in the plan look related, are dependencies, or appear adjacent. If the list is `[1]`, do not touch ticket 2.
 
 ### Step 0.5 — Create or checkout the `maestro` branch
 
@@ -74,7 +76,7 @@ Number each ticket by its ordinal position in the plan (1, 2, 3, ...). This ordi
 
 ### Step 2 — Process tickets sequentially
 
-For each ticket whose number appears in the parsed `<ticket-numbers>` list, in ascending order, perform the following steps. Tickets not in the list are silently skipped. Do **not** process tickets in parallel — each ticket involves git operations that must complete before the next begins.
+For each ticket whose number appears in the parsed `<ticket-numbers>` list, in ascending order, perform the following steps. **Tickets not in the list must be silently skipped — do not create branches, PRDs, or PRs for them, and do not mention them in the thinking trace as work to be done.** Do **not** process tickets in parallel — each ticket involves git operations that must complete before the next begins.
 
 #### 2a — Create the base branch
 
