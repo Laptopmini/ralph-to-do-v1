@@ -1,6 +1,6 @@
-# ralph-html
+# ralph-to-do
 
-A fork of [ralph-node](https://github.com/Laptopmini/ralph-node) with a simple boilerplate to serve a static HTML based application.
+A fork of [ralph-node](https://github.com/Laptopmini/ralph-node) implementing a static HTML based to-do list application with persistence.
 
 Fork this repo and drop in a new `PRD.md` to start building something with the loop already bootstrapped.
 
