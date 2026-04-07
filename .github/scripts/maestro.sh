@@ -186,7 +186,7 @@ while $MISSING_BLUEPRINT; do
     echo "⚪️ Created \"$FOLDER_NAME\"!"
 done
 
-if [[ -s "$BLUEPRINT_FILE" ]]; then
+if [[ ! -s "$BLUEPRINT_FILE" ]]; then
     echo "❌ Error: An issue occurred while preparing the implementation plan and its related files. Aborting."
     exit 1
 fi
