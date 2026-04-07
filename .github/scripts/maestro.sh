@@ -43,10 +43,7 @@ review_pull_requests() {
     local UNVERIFIED=true
     while $UNVERIFIED; do
         local ALL_MERGED=true
-        while IFS= read -r LINE; do
-            local PR_NUMBER
-            PR_NUMBER=$(echo "$LINE" | sed 's/.*#\([0-9]*\)).*/\1/')
-            
+        while IFS=$'\t' read -r _PRD_NUMBER PR_NUMBER; do
             if [ -z "$PR_NUMBER" ]; then
                 # Unable to extract PR number from line
                 ALL_MERGED=false
@@ -55,7 +52,6 @@ review_pull_requests() {
 
             local STATE
             STATE=$(gh pr view "$PR_NUMBER" --json state --jq '.state')
-            
             if [ "$STATE" != "MERGED" ]; then
                 ALL_MERGED=false
                 break
@@ -192,8 +188,7 @@ while IFS= read -r LEVEL; do
 
     echo "⚪️ [$LEVEL] Generating backpressure..."
     BACKPRESSURE_BRANCHES=""
-    while IFS= read -r LINE; do
-        BASE_BRANCH_NAME="${LINE%% (*}"
+    while IFS=$'\t' read -r BASE_BRANCH_NAME _PR_NUMBER; do
         BACKPRESSURE_BRANCH_NAME="$BASE_BRANCH_NAME-backpressure"
 
         # Fail-fast: if any backpressure loop fails, abort the entire run
@@ -220,9 +215,7 @@ while IFS= read -r LEVEL; do
 
     echo "⚪️ [$LEVEL] Proceeding with implementation..."
     IMPLEMENTATION_BRANCHES=""
-    while IFS= read -r LINE; do
-        BASE_BRANCH_NAME="${LINE%% (*}"
-
+    while IFS=$'\t' read -r BASE_BRANCH_NAME _PR_NUMBER; do
         # Fail-fast: if any ralph loop fails, abort the entire run
         git checkout "$BASE_BRANCH_NAME" && git pull
         npm i && npm run ralph -- "$FOLDER_NAME"

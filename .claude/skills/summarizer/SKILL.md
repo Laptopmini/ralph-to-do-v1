@@ -120,19 +120,21 @@ gh pr view <current-branch> --repo <repository> --json number --jq .number
 
 ### Step 4 — Output result
 
-Output ONLY the following line with no other text before or after it:
+Output ONLY the following single line with no other text before or after it:
 
 ```
-prd-<ticket-number> (#<pr-number>)
+prd-<ticket-number><TAB><pr-number>
 ```
 
-For example, ticket number 3 with PR number 12:
+Fields are separated by a single ASCII tab character (`\t`, 0x09). Do not emit parentheses, `#`, or any surrounding prose. Do not emit a trailing newline beyond the single record.
+
+For example, ticket number 3 with PR number 12 (where the gap is a real tab character):
 
 ```
-prd-3 (#12)
+prd-3	12
 ```
 
-Do not output any other text. This output is consumed by a bash script and must be machine-readable.
+This output is consumed by a bash script and must be machine-readable.
 
 If any step failed, exit with a non-zero exit code.
 
@@ -158,7 +160,7 @@ The skill would:
    - **Impacted Files**: list of affected files
 5. Run `gh pr create --repo Laptopmini/ralph-maestro-demo --title "prd(1): Timer Logic Module" --body "..." --base main --head prd-1`
 6. Extract PR number (e.g., `12`) from the created PR
-7. Output `prd-1 (#12)`
+7. Output `prd-1<TAB>12` (a single line, where `<TAB>` is a literal ASCII tab character)
 
 ---
 
