@@ -199,6 +199,13 @@ while IFS= read -r LEVEL; do
         echo "❌ Error: Ticketmaster agent returned no branches for level [$LEVEL]. Aborting."
         exit 1
     else
+        EXPECTED_COUNT=$(echo "$LEVEL" | tr ',' '\n' | grep -c .)
+        ACTUAL_COUNT=$(echo "$BRANCHES" | grep -c .)
+        if [[ "$EXPECTED_COUNT" != "$ACTUAL_COUNT" ]]; then
+            echo "❌ Error: Ticketmaster returned $ACTUAL_COUNT branch(es) for level [$LEVEL] but $EXPECTED_COUNT were expected. Aborting."
+            exit 1
+        fi
+
         echo "⚪️ Finished creating branches and PRDs for current level."
     fi
 

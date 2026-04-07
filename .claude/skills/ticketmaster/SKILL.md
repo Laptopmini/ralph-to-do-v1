@@ -10,6 +10,12 @@ disable-model-invocation: true
 
 # Ticketmaster Skill
 
+**HARD CONSTRAINTS — read before anything else:**
+- You will process **only** the tickets whose ordinals appear in the `<ticket-numbers>` argument. The parsed list is exhaustive and exclusive.
+- Tickets not in the list MUST NOT appear in your thinking trace, tool calls, branch names, commits, PRs, or summary output.
+- If the list is `[1]`, ticket 2 does not exist for the purposes of this run — even if it is a dependency, a sibling, or the only other ticket in the plan.
+- Violating this constraint is a hard failure. When in doubt, process fewer tickets, not more.
+
 **Important: Use extended thinking for this skill.** Before executing any step, think deeply about the implementation plan structure, the ticket contents, and how to generate clear PRD task lines. Extended thinking is required to produce high-quality, unambiguous PRDs for junior developers.
 
 Converts an implementation plan into per-ticket branches, PRD files, and pull requests.
@@ -51,6 +57,14 @@ If either argument is missing, respond with the corresponding error message from
 
 **The parsed list is exhaustive and exclusive.** Process exactly those ticket numbers — no more, no fewer — even if other tickets in the plan look related, are dependencies, or appear adjacent. If the list is `[1]`, do not touch ticket 2.
 
+### Step 0.25 — Announce and commit to the filter
+
+Before running any command, emit exactly one line in this format:
+
+`Processing tickets: [<comma-separated list>]. Skipping: [<comma-separated list of every other ticket ordinal in the plan>].`
+
+After emitting this line, you MUST NOT process any ticket that appears in the "Skipping" list, for any reason.
+
 ### Step 0.5 — Create or checkout the `maestro` branch
 
 Before processing any tickets, ensure the shared `maestro` accumulation branch exists and is up to date:
@@ -67,16 +81,13 @@ If `maestro` already exists (locally or on the remote), check it out, pull to ac
 
 ### Step 1 — Parse the implementation plan
 
-Read the markdown file at the given path. Extract:
+Read the markdown file at the given path. Identify ticket ordinals by their `#### Ticket N:` headings, but **only extract full content (description, constraints, files owned, tasks) for tickets in the filter list**. For skipped tickets, record nothing beyond the fact that they exist. Also extract plan-level context (the `Assumptions` section, the `Tech Stack & Architecture Notes` section, and any other top-level context) — this applies to all processed tickets.
 
-- **Plan-level context**: the `Assumptions` section, the `Tech Stack & Architecture Notes` section, and any other top-level context (everything outside tickets).
-- **Tickets**: each `#### Ticket N: ...` block, including its description, constraints, files owned, and tasks.
-
-Number each ticket by its ordinal position in the plan (1, 2, 3, ...). This ordinal is the `<ticket-number>` used in branch names and PR titles.
+The ticket's ordinal position in the plan is the `<ticket-number>` used in branch names and PR titles.
 
 ### Step 2 — Process tickets sequentially
 
-For each ticket whose number appears in the parsed `<ticket-numbers>` list, in ascending order, perform the following steps. **Tickets not in the list must be silently skipped — do not create branches, PRDs, or PRs for them, and do not mention them in the thinking trace as work to be done.** Do **not** process tickets in parallel — each ticket involves git operations that must complete before the next begins.
+Iterate over the filter list in ascending order. Do not iterate over the plan's tickets. If the filter list is `[1]`, you run the body of this step exactly once, with `<ticket-number> = 1`, and then proceed to Step 3. **Tickets not in the list must be silently skipped — do not create branches, PRDs, or PRs for them, and do not mention them in the thinking trace as work to be done.** Do **not** process tickets in parallel — each ticket involves git operations that must complete before the next begins.
 
 #### 2a — Create the base branch
 
@@ -234,7 +245,7 @@ Given an implementation plan with:
 ```
 
 The skill would:
-1. Create branch `prd-1` from `main`
+1. Create branch `prd-1` from `maestro`
 2. Create branch `prd-1-requirements` from `prd-1`
 3. Generate `PRD.md` with:
    - **Objective**: based on "Implement and unit-test the pure countdown logic"
@@ -259,3 +270,5 @@ Before generating each PRD, verify:
 - [ ] Context section includes only information relevant to this specific ticket
 - [ ] Constraints are copied faithfully from the implementation plan
 - [ ] The PRD is written clearly enough for a junior developer to follow without external context
+- [ ] The number of records in my Step 3 output equals the length of the filter list — no more, no fewer
+- [ ] Every branch name I created matches `prd-<N>-requirements` where `N` is in the filter list
