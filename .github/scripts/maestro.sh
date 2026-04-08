@@ -28,7 +28,7 @@ ask_continue() { read -n 1 -s -r -p "$*"$'\n' < /dev/tty; }
 view_pull_requests() {
     ask_continue "💬 Are you ready to review the Pull Request(s)? Press any key to open in browser..."
     local url
-    url=$(gh repo view -R "$REPO_SLUG" --json url -q ".url + \"/pulls\"")
+    url=$(gh repo view "$REPO_SLUG" --json url -q ".url + \"/pulls\"")
     if command -v xdg-open &>/dev/null; then
         xdg-open "$url"
     elif command -v open &>/dev/null; then
