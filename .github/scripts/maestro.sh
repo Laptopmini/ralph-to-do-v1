@@ -205,7 +205,7 @@ while IFS= read -r LEVEL; do
     fi
 
     echo "⚪️ [$LEVEL] Generating PRD(s)..."
-    BRANCHES=$(prompt "/ticketmaster $SLICED" --allowedTools "Read,Write,Bash,Glob,Grep" --model claude-sonnet-4-6)
+    BRANCHES=$(prompt "/ticketmaster $SLICED" --allowedTools "Read,Write,Bash,Glob,Grep" --model claude-sonnet-4-6 | grep $'\t' || true)
 
     mv -f "$SLICED" "$FOLDER_NAME/plan-level-$LEVEL_INDEX.md"
 
