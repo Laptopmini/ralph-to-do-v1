@@ -46,6 +46,9 @@ review_pull_requests() {
     view_pull_requests
     ask_continue "💬 Once all Pull Requests have been merged, press any key to continue..."
 
+    # Switch back to the development branch
+    git checkout maestro
+
     local UNVERIFIED=true
     while $UNVERIFIED; do
         local ALL_MERGED=true
@@ -75,6 +78,9 @@ review_pull_requests() {
             UNVERIFIED=false
         fi
     done
+
+    # Make sure the latest content merged is available
+    git pull origin maestro
 }
 
 cleanup() {
@@ -279,7 +285,6 @@ while IFS= read -r LEVEL; do
 done <<< "$TREE_LEVELS"
 
 echo "⚪️ Completed implementation plan. Archiving plan and log..."
-git checkout maestro && git pull
 mv -f "$BLUEPRINT_FILE" "$FOLDER_NAME/plan.md"
 mv -f "$BLUEPRINT_LEVELS_FILE" "$FOLDER_NAME/plan.levels"
 mv -f "$LOG_FILE" "$FOLDER_NAME/maestro.log"
