@@ -122,6 +122,8 @@ If a PR already exists for this head/base combination, skip PR creation but retr
 
 ### Step 3 — Output summary
 
+**This step is MANDATORY!** If the output is not captured, the workflow will fail. Do not forget to output the PR number!
+
 After all tickets have been processed, output ONLY the records below with no other text before or after them — no backticks, no blank lines, no code fences, nothing else:
 
 `<base-branch-name><TAB><pr-number>`
