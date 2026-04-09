@@ -21,7 +21,7 @@ REPO_SLUG=$(bash .github/scripts/repo-slug.sh)
 
 prompt() { bash .github/scripts/prompt.sh "$@"; }
 
-summarizer() { prompt "/summarizer $*" --allowedTools "Read,Bash(git diff:*),Bash(gh pr create:*),Bash(gh pr view:*)" --model claude-haiku-4-5; }
+summarizer() { prompt "/summarizer $*" --allowedTools "Read,Bash(git diff:*),Bash(gh pr create:*),Bash(gh pr view:*)" --model qwen/qwen3.5-35b-a3b; }
 
 ask_continue() { read -n 1 -s -r -p "$*"$'\n' < /dev/tty; }
 
@@ -52,7 +52,7 @@ review_pull_requests() {
     local UNVERIFIED=true
     while $UNVERIFIED; do
         local ALL_MERGED=true
-        while IFS=$'\t' read -r BRANCH_NAME PR_NUMBER; do
+        while IFS=$'\t' read -r _BASE_BRANCH_NAME PR_NUMBER; do
             if [ -z "$PR_NUMBER" ]; then
                 # Unable to extract PR number from line
                 ALL_MERGED=false
@@ -67,8 +67,9 @@ review_pull_requests() {
             fi
 
             # Clean up the local branch
-            if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
-                git branch -D "$BRANCH_NAME"
+            HEAD_BRANCH_NAME=$(gh pr view "$PR_NUMBER" --json headRefName --jq .headRefName)
+            if [ -n "$HEAD_BRANCH_NAME" ] && git show-ref --verify --quiet "refs/heads/$HEAD_BRANCH_NAME"; then
+                git branch -D "$HEAD_BRANCH_NAME"
             fi
         done <<< "$1"
 
@@ -138,7 +139,7 @@ while $MISSING_BLUEPRINT; do
         REUSING_EXISTING_PLAN=true
     else
         echo "⚪️ Generating implementation plan..."
-        TREE_LEVELS=$(prompt "/blueprint $*" --allowedTools "Read,Glob,Grep,Write" --model claude-opus-4-6)
+        TREE_LEVELS=$(prompt "/blueprint $*" --allowedTools "Read,Glob,Grep,Write" --model opus)
 
         if [[ -z "$TREE_LEVELS" ]]; then
             echo "🟠 Blueprint agent returned no tree levels. Retrying in 5s..."
@@ -212,7 +213,7 @@ while IFS= read -r LEVEL; do
     fi
 
     echo "⚪️ Generating PRD(s)..."
-    BRANCHES=$(prompt "/ticketmaster $SLICED" --allowedTools "Read,Write,Bash,Glob,Grep" --model claude-sonnet-4-6 | grep $'\t' || true)
+    BRANCHES=$(prompt "/ticketmaster $SLICED" --allowedTools "Read,Write,Bash,Glob,Grep" --model qwen/qwen3.5-35b-a3b | grep $'\t' || true)
 
     mv -f "$SLICED" "$FOLDER_NAME/plan-level-$LEVEL_INDEX.md"
 
