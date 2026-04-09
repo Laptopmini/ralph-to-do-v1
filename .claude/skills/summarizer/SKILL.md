@@ -93,13 +93,20 @@ Use `gh pr create` to open the pull request:
 
 This value is `<commit-prefix>` below.
 
+**Always write the PR body to a temp file and use `--body-file`** to avoid shell escaping issues with backticks, quotes, and newlines in the generated description:
+
 ```bash
+PR_BODY_FILE=$(mktemp /tmp/pr-body-XXXXXX.md)
+cat > "$PR_BODY_FILE" << 'PRBODYEOF'
+<pr-description>
+PRBODYEOF
 gh pr create \
   --repo <repository> \
   --title "<commit-prefix>: <title>" \
-  --body "<pr-description>" \
+  --body-file "$PR_BODY_FILE" \
   --base <base-branch> \
   --head <head-branch>
+rm -f "$PR_BODY_FILE"
 ```
 
 Where:
@@ -109,6 +116,8 @@ Where:
 - `<pr-description>` is the full generated PR description from Step 2
 - `<base-branch>` is the third argument (e.g., `main`)
 - `<head-branch>` is the second argument (e.g., `prd-1`)
+
+Do **not** use `--body "..."` inline — it breaks when the diff or description contains backticks or quotes.
 
 If `gh pr create` fails, exit with a non-zero exit code.
 
@@ -160,7 +169,7 @@ The skill would:
    - **Changes Made**: bulleted list of key modifications
    - **Impacted Files**: list of affected files
 4. Determine the commit prefix: `feat(1)` (since a ticket number was extracted)
-5. Run `gh pr create --repo Laptopmini/ralph-maestro-demo --title "feat(1): Timer Logic Module" --body "..." --base main --head prd-1`
+5. Write the PR description to a temp file and run `gh pr create --repo Laptopmini/ralph-maestro-demo --title "feat(1): Timer Logic Module" --body-file /tmp/pr-body-XXXXXX.md --base main --head prd-1`
 6. Extract PR number (e.g., `12`) from the created PR
 7. Output `prd-1<TAB>12` (a single line, where `<TAB>` is a literal ASCII tab character)
 

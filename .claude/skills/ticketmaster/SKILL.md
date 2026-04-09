@@ -116,6 +116,24 @@ Then use `gh pr create` to open a PR, passing `--repo "$REPO_SLUG"`:
   - The ticket name comes from the `#### Ticket N: <ticket name>` heading in the plan.
 - **Body**: the ticket's description (the blockquote line) followed by its full task list from the plan.
 
+**Always write the PR body to a temp file and use `--body-file`** to avoid shell escaping issues with backticks, quotes, and newlines in the PRD content:
+
+```bash
+PR_BODY_FILE=$(mktemp /tmp/pr-body-XXXXXX.md)
+cat > "$PR_BODY_FILE" << 'PRBODYEOF'
+<ticket description and task list>
+PRBODYEOF
+gh pr create \
+  --repo "$REPO_SLUG" \
+  --base prd-<ticket-number> \
+  --head prd-<ticket-number>-requirements \
+  --title "prd(<ticket-number>): <ticket name>" \
+  --body-file "$PR_BODY_FILE"
+rm -f "$PR_BODY_FILE"
+```
+
+Do **not** use `--body "..."` inline — it breaks when the content contains backticks or quotes.
+
 If a PR already exists for this head/base combination, skip PR creation but retrieve its PR number.
 
 **Retain the PR number** returned by `gh pr create` (or from the existing PR) for use in the summary output. You can extract the number from the URL returned by `gh pr create`, or by querying with `gh pr view prd-<ticket-number>-requirements --json number --jq .number`.
