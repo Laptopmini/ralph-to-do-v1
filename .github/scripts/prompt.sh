@@ -27,16 +27,17 @@ EXTRA_ARGS=()
 LOCAL_ENV=()
 
 # Parse arguments to capture --model value
-i=1                                                                                         
-while [[ $i -lt $# ]]; do                                                                   
-    arg="${!i}"                                                                             
-    if [[ "$arg" == "--model" && ${!((i+1))} != --* ]]; then                                
-        MODEL="${!((i+1))}"                                                                 
-        ((i+=2)) || true                                                                    
-    else                                                                                    
-        EXTRA_ARGS+=("$arg")                                                                
-        ((i++)) || true                                                                     
-    fi                                                                                      
+ARGS=("$@")                                                                                                                                                                   
+i=0                                                                                                                                                                           
+while [[ $i -lt ${#ARGS[@]} ]]; do
+    arg="${ARGS[$i]}"                                                                                                                                                         
+    if [[ "$arg" == "--model" && $((i+1)) -lt ${#ARGS[@]} && "${ARGS[$((i+1))]}" != --* ]]; then
+        MODEL="${ARGS[$((i+1))]}"                                                                                                                                             
+        ((i+=2)) || true
+    else                                                                                                                                                                      
+        EXTRA_ARGS+=("$arg")
+        ((i++)) || true                                                                                                                                                       
+    fi
 done
 
 if [[ "$MODEL" != "opus" && "$MODEL" != "sonnet" && "$MODEL" != "haiku" ]]; then
