@@ -27,12 +27,16 @@ EXTRA_ARGS=()
 LOCAL_ENV=()
 
 # Parse arguments to capture --model value
-for arg in "$@"; do
-    if [[ "$arg" == "--model="* ]]; then
-        MODEL="${arg#--model=}"
-    else
-        EXTRA_ARGS+=("$arg")
-    fi
+i=1                                                                                         
+while [[ $i -lt $# ]]; do                                                                   
+    arg="${!i}"                                                                             
+    if [[ "$arg" == "--model" && ${!((i+1))} != --* ]]; then                                
+        MODEL="${!((i+1))}"                                                                 
+        ((i+=2)) || true                                                                    
+    else                                                                                    
+        EXTRA_ARGS+=("$arg")                                                                
+        ((i++)) || true                                                                     
+    fi                                                                                      
 done
 
 if [[ "$MODEL" != "opus" && "$MODEL" != "sonnet" && "$MODEL" != "haiku" ]]; then
