@@ -67,7 +67,7 @@ review_pull_requests() {
             fi
 
             # Clean up the local branch
-            HEAD_BRANCH_NAME=$(gh pr view "$PR_NUMBER" --json headRefName --jq .headRefName)
+            HEAD_BRANCH_NAME=$(gh pr view "$PR_NUMBER" -R "$REPO_SLUG"--json headRefName --jq .headRefName)
             if [ -n "$HEAD_BRANCH_NAME" ] && git show-ref --verify --quiet "refs/heads/$HEAD_BRANCH_NAME"; then
                 git branch -D "$HEAD_BRANCH_NAME"
             fi
