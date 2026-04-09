@@ -14,7 +14,7 @@ LOG_FILE="/tmp/maestro.log"
 LOG_FILE_BACKUP="maestro.log"
 BLUEPRINT_FILE=".maestro.blueprint.md"
 BLUEPRINT_LEVELS_FILE=".maestro.blueprint.levels"
-SLICE_FILE=".maestro.level-"
+SLICE_FILE=".maestro.level.md"
 REPO_SLUG=$(bash .github/scripts/repo-slug.sh)
 
 # Functions
@@ -88,7 +88,7 @@ cleanup() {
     local exit_code=$?
     rm -f "$LOCK_FILE" "$LOG_FILE"
     if [[ $exit_code -eq 0 ]]; then
-        rm -f "$BLUEPRINT_FILE" "$BLUEPRINT_LEVELS_FILE" "$SLICE_FILE"*
+        rm -f "$BLUEPRINT_FILE" "$BLUEPRINT_LEVELS_FILE" "$SLICE_FILE"
     fi
 }
 
@@ -204,7 +204,7 @@ LEVEL_INDEX=0
 while IFS= read -r LEVEL; do
     echo "⚪️ Beginning level \"$LEVEL\"..."
     LEVEL_INDEX=$((LEVEL_INDEX + 1))
-    SLICED="$SLICE_FILE$LEVEL_INDEX.md"
+    SLICED="$SLICE_FILE"
     echo "⚪️ Slicing plan into \"$SLICED\"..."
     bash .github/scripts/slice-plan.sh "$BLUEPRINT_FILE" "$LEVEL" "$SLICED"
     if [ ! -s "$SLICED" ]; then
@@ -213,7 +213,7 @@ while IFS= read -r LEVEL; do
     fi
 
     echo "⚪️ Generating PRD(s)..."
-    BRANCHES=$(prompt "/ticketmaster $SLICED" --allowedTools "Read,Write,Bash,Glob,Grep" --model qwen/qwen3.5-35b-a3b | grep $'\t' || true)
+    BRANCHES=$(prompt "/ticketmaster \"$SLICED\"" --allowedTools "Read,Write,Bash,Glob,Grep" --model qwen/qwen3.5-35b-a3b | grep $'\t' || true)
 
     mv -f "$SLICED" "$FOLDER_NAME/plan-level-$LEVEL_INDEX.md"
 
