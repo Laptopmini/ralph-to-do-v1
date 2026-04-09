@@ -234,9 +234,13 @@ while IFS= read -r LEVEL; do
         BRANCHES=""
         for TICKET_NUM in $(echo "$LEVEL" | tr ',' '\n' | grep .); do
             HEAD="prd-${TICKET_NUM}-requirements"
-            PR_NUMBER=$(gh pr list -R "$REPO_SLUG" --head "$HEAD" --state all --json number --jq '.[0].number' 2>/dev/null || true)
+            if ! git ls-remote --exit-code --heads origin "$HEAD" >/dev/null 2>&1; then
+                echo "❌ Error: Head branch \"$HEAD\" does not exist on origin. Ticketmaster failed to create it. Aborting."
+                exit 1
+            fi              
+            PR_NUMBER=$(gh pr list -R "$REPO_SLUG" --head "$HEAD" --state open --json number --jq '.[0].number' 2>/dev/null || true)
             if [[ -z "$PR_NUMBER" ]]; then
-                echo "❌ Error: Could not find a PR for head branch \"$HEAD\". Aborting."
+                echo "❌ Error: No open PR found for head branch \"$HEAD\". Aborting."
                 exit 1
             fi
             [[ -n "$BRANCHES" ]] && BRANCHES+=$'\n'
@@ -272,21 +276,21 @@ while IFS= read -r LEVEL; do
         echo "⚪️ Generated backpressure for \"$BASE_BRANCH_NAME\"."
     done <<< "$BRANCHES"
 
-    BACKPRESSURE_BRANCHES=""                                                                                                                                                  
+    BACKPRESSURE_BRANCHES=""
     if [[ -s "$PR_TSV_FILE" ]]; then
-        BACKPRESSURE_BRANCHES=$(grep $'\t' "$PR_TSV_FILE" || true)                                                                                                            
-    fi                                                                                                                                                                                                                                                                                                                            
-                                                                                                                                                                            
-    if [[ -z "$BACKPRESSURE_BRANCHES" ]]; then                                                                                                                                
-        echo "❌ Error: No backpressure branches were generated for level \"$LEVEL\". Aborting."
-        exit 1                                                                                                                                                                
+        BACKPRESSURE_BRANCHES=$(grep $'\t' "$PR_TSV_FILE" || true)
     fi
 
-    EXPECTED_BP_COUNT=$(echo "$BRANCHES" | grep -c .)                                                                                                                         
-    ACTUAL_BP_COUNT=$(echo "$BACKPRESSURE_BRANCHES" | grep -c .)                                                                                                              
-    if [[ "$ACTUAL_BP_COUNT" != "$EXPECTED_BP_COUNT" ]]; then                                                                                                                 
-        echo "❌ Error: Generated $ACTUAL_BP_COUNT backpressure branch(es) for level \"$LEVEL\" but $EXPECTED_BP_COUNT were expected. Aborting."                              
-        exit 1                                                                                                                                                                
+    if [[ -z "$BACKPRESSURE_BRANCHES" ]]; then
+        echo "❌ Error: No backpressure branches were generated for level \"$LEVEL\". Aborting."
+        exit 1
+    fi
+
+    EXPECTED_BP_COUNT=$(echo "$BRANCHES" | grep -c .)
+    ACTUAL_BP_COUNT=$(echo "$BACKPRESSURE_BRANCHES" | grep -c .)
+    if [[ "$ACTUAL_BP_COUNT" != "$EXPECTED_BP_COUNT" ]]; then
+        echo "❌ Error: Generated $ACTUAL_BP_COUNT backpressure branch(es) for level \"$LEVEL\" but $EXPECTED_BP_COUNT were expected. Aborting."
+        exit 1
     fi
 
     review_pull_requests "$BACKPRESSURE_BRANCHES"
@@ -306,21 +310,21 @@ while IFS= read -r LEVEL; do
         echo "⚪️ Implementation for \"$BASE_BRANCH_NAME\" completed."
     done <<< "$BACKPRESSURE_BRANCHES"
 
-    IMPLEMENTATION_BRANCHES=""                                                                                                                                                
+    IMPLEMENTATION_BRANCHES=""
     if [[ -s "$PR_TSV_FILE" ]]; then
-        IMPLEMENTATION_BRANCHES=$(grep $'\t' "$PR_TSV_FILE" || true)                                                                                                          
-    fi                                                                                                                                                                        
-                                                                                                                                                                            
-    if [[ -z "$IMPLEMENTATION_BRANCHES" ]]; then                                                                                                                              
-        echo "❌ Error: No implementation branches were generated for level \"$LEVEL\". Aborting."
-        exit 1                                                                                                                                                                
+        IMPLEMENTATION_BRANCHES=$(grep $'\t' "$PR_TSV_FILE" || true)
     fi
 
-    EXPECTED_IMPL_COUNT=$(echo "$BACKPRESSURE_BRANCHES" | grep -c .)                                                                                                          
-    ACTUAL_IMPL_COUNT=$(echo "$IMPLEMENTATION_BRANCHES" | grep -c .)                                                                                                          
-    if [[ "$ACTUAL_IMPL_COUNT" != "$EXPECTED_IMPL_COUNT" ]]; then                                                                                                             
-        echo "❌ Error: Generated $ACTUAL_IMPL_COUNT implementation branch(es) for level \"$LEVEL\" but $EXPECTED_IMPL_COUNT were expected. Aborting."                        
-        exit 1                                                                                                                                                                
+    if [[ -z "$IMPLEMENTATION_BRANCHES" ]]; then
+        echo "❌ Error: No implementation branches were generated for level \"$LEVEL\". Aborting."
+        exit 1
+    fi
+
+    EXPECTED_IMPL_COUNT=$(echo "$BACKPRESSURE_BRANCHES" | grep -c .)
+    ACTUAL_IMPL_COUNT=$(echo "$IMPLEMENTATION_BRANCHES" | grep -c .)
+    if [[ "$ACTUAL_IMPL_COUNT" != "$EXPECTED_IMPL_COUNT" ]]; then
+        echo "❌ Error: Generated $ACTUAL_IMPL_COUNT implementation branch(es) for level \"$LEVEL\" but $EXPECTED_IMPL_COUNT were expected. Aborting."
+        exit 1
     fi
 
     review_pull_requests "$IMPLEMENTATION_BRANCHES"
