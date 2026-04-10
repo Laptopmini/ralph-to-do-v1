@@ -1,8 +1,7 @@
 ---
 name: ticketmaster
 description: >
-  Takes a path to a markdown implementation plan and, for each ticket in that file,
-  creates branches, generates a PRD.md, commits, pushes, and opens a pull request.
+  Takes a path to a markdown implementation plan and, for each ticket in that file, generates a PRD.md and pushes it out.
   Activated ONLY by the slash command "/ticketmaster" followed by a file path argument.
   Do NOT use this skill for any other phrasing. This skill is exclusively command-driven.
 disable-model-invocation: true
@@ -38,22 +37,6 @@ Do not run the workflow.
 
 Extract `<file-path>` from the user's message (everything after `/ticketmaster `). If it is missing, respond with the error message from the **Invocation** section and stop. Read the file at `<file-path>`. If the file does not exist or is empty, tell the user and stop.
 
-### Step 0.5 — Create or checkout the `maestro` branch
-
-Before processing any tickets, ensure the shared `maestro` accumulation branch exists and is up to date:
-
-```bash
-git fetch origin --prune
-git checkout main
-git pull origin main
-git checkout maestro 2>/dev/null || git checkout -b maestro
-git merge main
-git pull origin maestro 2>/dev/null || true
-git push -u origin maestro 2>/dev/null || true
-```
-
-If `maestro` already exists (locally or on the remote), check it out, pull to accept any remote changes, and continue. Do not error.
-
 ### Step 1 — Parse the implementation plan
 
 Read the markdown file at the given path. Parse every `#### Ticket N: ...` section in the file — extract the description, constraints, files owned, and tasks for each. Also extract plan-level context (the `Assumptions` section, the `Tech Stack & Architecture Notes` section, and any other top-level context) — this applies to all processed tickets.
@@ -64,71 +47,27 @@ The ordinal `N` from the `#### Ticket N:` heading is the `<ticket-number>` used 
 
 Iterate over every parsed ticket in ascending order. Do **not** process tickets in parallel — each ticket involves git operations that must complete before the next begins.
 
-#### 2a — Create the base branch
+#### 2a — Checkout branch
 
-Create a branch called `prd-<ticket-number>` from `maestro`.
-
-```bash
-git checkout maestro
-git pull origin maestro
-git checkout -b prd-<ticket-number>
-git push -u origin prd-<ticket-number>
-```
-
-If the branch `prd-<ticket-number>` already exists locally or on the remote, skip creation and check it out instead.
-
-#### 2b — Create the requirements branch
-
-From `prd-<ticket-number>`, create a branch called `prd-<ticket-number>-requirements`.
+Run the checkout script with the ticket number to ensure the repo is in the correct state:
 
 ```bash
-git checkout prd-<ticket-number>
-git checkout -b prd-<ticket-number>-requirements
+bash .claude/skills/ticketmaster/scripts/checkout.sh <ticket-number>
 ```
 
-If the branch `prd-<ticket-number>-requirements` already exists, skip creation and check it out instead.
+#### 2b — Generate PRD.md
 
-#### 2c — Generate PRD.md
+Create a file called `PRD.md` at the root of the repository. Follow the PRD format described below in the **PRD Format** section.
 
-Create a file called `PRD.md` at the root of the repository on this branch. Follow the PRD format described below in the **PRD Format** section.
+#### 2c — Push the generated PRD
 
-#### 2d — Commit and push
+Run the push script with the ticket number and ticket title to commit the PRD:
 
 ```bash
-git add PRD.md
-git commit -m "chore(ai): add PRD for ticket <ticket-number>"
-git push -u origin prd-<ticket-number>-requirements
+bash .claude/skills/ticketmaster/scripts/push-changes.sh <ticket-number> "<ticket-title>"
 ```
 
-#### 2e — Open a pull request
-
-First, determine the GitHub `owner/repo` slug for use with `gh`:
-
-```bash
-REPO_SLUG=$(bash .github/scripts/repo-slug.sh)
-```
-
-Then use `gh pr create` to open a PR, passing `--repo "$REPO_SLUG"`:
-
-- **Base branch**: `prd-<ticket-number>`
-- **Head branch**: `prd-<ticket-number>-requirements`
-- **Title**: `prd(<ticket-number>): <ticket name>`
-  - The ticket name comes from the `#### Ticket N: <ticket name>` heading in the plan.
-- **Body**: the ticket's description (the blockquote line) followed by its full task list from the plan.
-
-If a PR already exists for this head/base combination, skip PR creation but retrieve its PR number.
-
-Capture the PR number returned by `gh pr create` (or from the existing PR). You can extract it from the URL returned by `gh pr create`, or query it with `gh pr view prd-<ticket-number>-requirements --json number --jq .number`.
-
-#### 2f — Record the PR in `.maestro.pull-requests.tsv`
-
-Immediately after the PR number is known, append a single tab-separated line to `.maestro.pull-requests.tsv` at the repository root (create the file if it does not exist). Do this once per ticket, before moving on to the next:
-
-```bash
-printf 'prd-<ticket-number>\t<pr-number>\n' >> .maestro.pull-requests.tsv
-```
-
-Do not commit it (it is gitignored). Do not write any other content to it.
+Where `<ticket-title>` is the text after `#### Ticket N:` in the plan heading.
 
 ---
 
@@ -208,17 +147,15 @@ Given an implementation plan with:
 ```
 
 The skill would:
-1. Create branch `prd-1` from `maestro`
-2. Create branch `prd-1-requirements` from `prd-1`
-3. Generate `PRD.md` with:
+1. Run `bash .claude/skills/ticketmaster/scripts/checkout.sh 1` to checkout the correct branch
+2. Generate `PRD.md` with:
    - **Objective**: based on "Implement and unit-test the pure countdown logic"
    - **Context**: pulled from the plan's assumptions and tech stack notes
    - **Constraints**: "Must be a TypeScript module importable by Jest", "No DOM or browser APIs"
    - **Tasks**:
      - `- [ ] Create timer logic module. Create src/timer-logic.ts with pure functions: formatTime(totalSeconds: number): string (returns "MM:SS") and tick(remainingSeconds: number): number (decrements by 1, floors at 0), and a constant POMODORO_DURATION_SECONDS = 1500. [test: npx jest tests/unit/create-timer-logic-module.test.ts]`
      - `- [ ] Create timer logic unit tests. Create tests/unit/timer-logic.test.ts — test formatTime (25:00, 00:00, 09:59 edge cases), test tick (decrements, does not go below 0), test duration constant equals 1500. [test: npx jest tests/unit/create-timer-logic-unit-tests.test.ts]`
-4. Commit and push
-5. Open PR: `prd(1): Timer Logic (Pure Functions)` against `prd-1`
+3. Run `bash .claude/skills/ticketmaster/scripts/push-changes.sh 1 "Timer Logic (Pure Functions)"` to push the PRD
 
 ---
 
@@ -233,5 +170,3 @@ Before generating each PRD, verify:
 - [ ] Context section includes only information relevant to this specific ticket
 - [ ] Constraints are copied faithfully from the implementation plan
 - [ ] The PRD is written clearly enough for a junior developer to follow without external context
-- [ ] Every branch name I created matches `prd-<N>-requirements` where `N` is the ordinal from a `#### Ticket N:` heading in the input file
-- [ ] `.maestro.pull-requests.tsv` contains exactly one line per processed ticket, in the form `prd-<N>\t<pr-number>`
