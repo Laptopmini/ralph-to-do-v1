@@ -23,7 +23,7 @@ REPO_SLUG=$(bash .github/scripts/repo-slug.sh)
 
 # Functions
 
-summarizer() { prompt "/summarizer $*" --allowedTools "Read,Write,Bash(git diff:*),Bash(mktemp:*),Bash(cat:*),Bash(rm -f /tmp/pr-body-*:*),Bash(printf:*),Bash(gh pr create:*),Bash(gh pr view:*)" --model qwen/qwen3.5-35b-a3b; }
+summarizer() { prompt "/summarizer $*" --allowedTools "Read,Write,Bash" --model qwen/qwen3.5-35b-a3b; }
 
 ask_continue() { read -n 1 -s -r -p "$*"$'\n' < /dev/tty; }
 
