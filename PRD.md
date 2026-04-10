@@ -29,7 +29,7 @@ This ticket focuses solely on the pure logic layer (`src/todo.ts`) with no DOM d
 
 ## Tasks
 
-- [ ] Define Todo interface and STORAGE_KEY constant. Create src/todo.ts with exported Todo type (id: string, text: string, completed: boolean) and export const STORAGE_KEY = "todos". `[test: npx jest tests/unit/define-todo-interface-storage-key.test.ts]`
+- [x] Define Todo interface and STORAGE_KEY constant. Create src/todo.ts with exported Todo type (id: string, text: string, completed: boolean) and export const STORAGE_KEY = "todos". `[test: npx jest tests/unit/define-todo-interface-storage-key.test.ts]`
 - [ ] Implement loadTodos function. Create loadTodos(): Todo[] — reads the "todos" key from localStorage, parses as JSON, returns the array; if missing, invalid JSON, or non-array value, return empty array []. `[test: npx jest tests/unit/implement-load-todos.test.ts]`
 - [ ] Implement saveTodos function. Create saveTodos(todos: Todo[]): void — serializes the given array to JSON and writes it to localStorage under the "todos" key. `[test: npx jest tests/unit/implement-save-todos.test.ts]`
 - [ ] Implement addTodo function. Create addTodo(todos: Todo[], text: string): Todo[] — if text.trim() is empty, return array unchanged; otherwise create new Todo with id=crypto.randomUUID(), text=trimmed input, completed=false; prepend to array and return new array (does not call saveTodos). `[test: npx jest tests/unit/implement-add-todo.test.ts]`
