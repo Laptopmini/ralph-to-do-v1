@@ -125,7 +125,7 @@ prompt() {
         "${EXTRA_ARGS[@]}" 2>&1 \
         | tee "$RAW" \
         | tee >(jq -r --unbuffered 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' >&2) \
-        | jq -r 'select(.type=="result") | .result')
+        | jq -r 'select(.type=="result") | .result'
     
     ENGINE_EXIT=${PIPESTATUS[0]}
     set -e
