@@ -8,6 +8,8 @@
 
 set -euo pipefail
 
+source .github/scripts/log.sh
+
 if [[ -z "${1:-}" ]]; then
   echo "Usage: $0 <new-repo-name>" >&2
   exit 1
@@ -19,7 +21,7 @@ UPSTREAM=$(git remote get-url origin)
 BARE_CLONE="temp-repo-bare-clone"
 NEW_REPO="https://github.com/$NAMESPACE/$NAME.git"
 
-echo "Cloning $UPSTREAM as $NAME..."
+log INFO "Cloning $UPSTREAM as $NAME..."
 
 # Navigate to parent directory
 cd ..
@@ -49,11 +51,13 @@ cd "$NAME"
 git remote add upstream "$UPSTREAM"
 
 # Set the package name
-npm pkg set name="$NAME" || true
+if command -v npm &>/dev/null && [ -f package.json ]; then
+    npm pkg set name="$NAME" || true
+fi
 
 if command -v code &>/dev/null; then
   # Open the project in VS Code
   code .
 fi
 
-echo "✅ Done!."
+log SUCCESS "Done!"

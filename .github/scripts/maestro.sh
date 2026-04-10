@@ -7,6 +7,9 @@
 
 set -euo pipefail
 
+source .github/scripts/log.sh
+source .github/scripts/prompt.sh
+
 # Settings
 
 LOCK_FILE=".maestro.lock"
@@ -20,9 +23,7 @@ REPO_SLUG=$(bash .github/scripts/repo-slug.sh)
 
 # Functions
 
-prompt() { bash .github/scripts/prompt.sh "$@"; }
-
-summarizer() { prompt "/summarizer $*" --allowedTools "Read,Bash(git diff:*),Bash(gh pr create:*),Bash(gh pr view:*)" --model qwen/qwen3.5-35b-a3b; }
+summarizer() { prompt "/summarizer $*" --allowedTools "Read,Write,Bash(git diff:*),Bash(mktemp:*),Bash(cat:*),Bash(rm -f /tmp/pr-body-*:*),Bash(printf:*),Bash(gh pr create:*),Bash(gh pr view:*)" --model qwen/qwen3.5-35b-a3b; }
 
 ask_continue() { read -n 1 -s -r -p "$*"$'\n' < /dev/tty; }
 
@@ -37,7 +38,7 @@ view_pull_requests() {
     elif command -v start &>/dev/null; then
         start "$url"
     else
-        echo "🟠 Could not detect a browser opener. Visit: $url"
+        log WARN "Could not detect a browser opener. Visit: $url"
     fi
 }
 
@@ -96,7 +97,7 @@ cleanup() {
 # Main
 
 if [ -e "$LOCK_FILE" ]; then
-    echo "❌ Error: Maestro is already running! Exiting..."
+    log ERROR "Maestro is already running! Exiting..."
     exit 1
 fi
 
@@ -106,8 +107,8 @@ trap 'exit 130' INT HUP TERM
 
 if [ ! -s "$BLUEPRINT_FILE" ] || [ ! -s "$BLUEPRINT_LEVELS_FILE" ]; then
     if [ -z "$*" ]; then
-        echo "❌ Error: No feature(s) request paragraph/description provided."
-        echo "Usage: $0 [Your feature request paragraph]"
+        log ERROR "No feature(s) request paragraph/description provided."
+        log ERROR "Usage: $0 [Your feature request paragraph]"
         exit 1
     fi
 fi
@@ -122,7 +123,7 @@ fi
 exec > >(tee -a "$LOG_FILE")
 exec 2>&1
 
-echo "🟢 Beginning orchestration..."
+log INFO "Beginning orchestration..."
 
 TREE_LEVELS=""
 FOLDER_NAME=""
@@ -130,20 +131,22 @@ MISSING_BLUEPRINT=true
 REUSING_EXISTING_PLAN=false
 while $MISSING_BLUEPRINT; do
     if [[ -s "$BLUEPRINT_FILE" ]] && [[ -s "$BLUEPRINT_LEVELS_FILE" ]]; then
-        echo "⚪️ Re-using existing implementation plan..."
+        log INFO "Re-using existing implementation plan..."
         TREE_LEVELS=$(cat "$BLUEPRINT_LEVELS_FILE")
 
         if [[ -z "$TREE_LEVELS" ]]; then
-            echo "❌ Error: Tree levels file is empty. You should regenerate the plan or define one. Aborting."
+            log ERROR "Tree levels file is empty. You should regenerate the plan or define one. Aborting."
             exit 1
         fi
         REUSING_EXISTING_PLAN=true
     else
-        echo "⚪️ Generating implementation plan..."
+        log INFO "Generating implementation plan..."
         TREE_LEVELS=$(prompt "/blueprint $*" --allowedTools "Read,Glob,Grep,Write" --model opus)
 
+        # FIXME: Should tree levels be written by the skill using a script to avoid divergence?
+
         if [[ -z "$TREE_LEVELS" ]]; then
-            echo "🟠 Blueprint agent returned no tree levels. Retrying in 5s..."
+            log WARN "Blueprint agent returned no tree levels. Retrying in 5s..."
             sleep 5
             continue
         fi
@@ -153,7 +156,7 @@ while $MISSING_BLUEPRINT; do
     if command -v code &>/dev/null; then
         code "$BLUEPRINT_FILE"
     else
-        echo "⚪️ Using implementation plan from $BLUEPRINT_FILE."
+        log INFO "Using implementation plan from $BLUEPRINT_FILE."
     fi
 
     # Capture the log file in case the user quits the program here to execute later
@@ -166,12 +169,12 @@ while $MISSING_BLUEPRINT; do
         rm -f "$BLUEPRINT_FILE" "$BLUEPRINT_LEVELS_FILE"
 
         if [ -z "$*" ] && ! $REUSING_EXISTING_PLAN; then
-            echo "❌ Error: User declined existing plan, but no feature(s) request paragraph/description provided."
-            echo "Usage: $0 [Your feature request paragraph]"
+            log ERROR "User declined existing plan, but no feature(s) request paragraph/description provided."
+            log ERROR "Usage: $0 [Your feature request paragraph]"
             exit 1
         fi
 
-        echo "⚪️ User did not approve plan, trying again..."
+        log WARN "User did not approve plan, trying again..."
         continue
     fi
 
@@ -180,7 +183,7 @@ while $MISSING_BLUEPRINT; do
         EXTRACTED_NAME=$(echo "$FIRST_LINE" | sed 's/## Implementation Plan: //g' | tr ' ' '-' | tr '[:upper:]' '[:lower:]')
     else
         EXTRACTED_NAME="new-feature"
-        echo "🟠 Could not parse blueprint name from header. Defaulting to '$EXTRACTED_NAME'."
+        log WARN "Could not parse blueprint name from header. Defaulting to '$EXTRACTED_NAME'."
     fi
     FOLDER_NAME="docs/$EXTRACTED_NAME"
 
@@ -192,28 +195,28 @@ while $MISSING_BLUEPRINT; do
     done
 
     mkdir -p "$FOLDER_NAME"
-    echo "⚪️ Created \"$FOLDER_NAME\"!"
+    log INFO "Created \"$FOLDER_NAME\"!"
 done
 
 if [[ ! -s "$BLUEPRINT_FILE" ]]; then
-    echo "❌ Error: An issue occurred while preparing the implementation plan and its related files. Aborting."
+    log ERROR "An issue occurred while preparing the implementation plan and its related files. Aborting."
     exit 1
 fi
 
-echo "⚪️ Proceeding through implementation tree levels..."
+log INFO "Proceeding through implementation tree levels..."
 LEVEL_INDEX=0
 while IFS= read -r LEVEL; do
-    echo "⚪️ Beginning level \"$LEVEL\"..."
+    log INFO "Beginning level \"$LEVEL\"..."
     LEVEL_INDEX=$((LEVEL_INDEX + 1))
     SLICED="$SLICE_FILE"
-    echo "⚪️ Slicing plan into \"$SLICED\"..."
+    log INFO "Slicing plan into \"$SLICED\"..."
     bash .github/scripts/slice-plan.sh "$BLUEPRINT_FILE" "$LEVEL" "$SLICED"
     if [ ! -s "$SLICED" ]; then
-        echo "❌ Error: Sliced plan '$SLICED' is missing or empty. Aborting."
+        log ERROR "Sliced plan '$SLICED' is missing or empty. Aborting."
         exit 1
     fi
 
-    echo "⚪️ Generating PRD(s)..."
+    log INFO "Generating PRD(s)..."
     rm -f "$PR_TSV_FILE"
     prompt "/ticketmaster \"$SLICED\"" --allowedTools "Read,Write,Bash,Glob,Grep" --model qwen/qwen3.5-35b-a3b || true
 
@@ -230,17 +233,17 @@ while IFS= read -r LEVEL; do
     [[ -n "$BRANCHES" ]] && ACTUAL_COUNT=$(echo "$BRANCHES" | grep -c .)
 
     if [[ "$ACTUAL_COUNT" != "$EXPECTED_COUNT" ]]; then
-        echo "🟠 Ticketmaster recorded $ACTUAL_COUNT/$EXPECTED_COUNT PR(s) in $PR_TSV_FILE. Reconstructing from gh pr list..."
+        log WARN "Ticketmaster recorded $ACTUAL_COUNT/$EXPECTED_COUNT PR(s) in $PR_TSV_FILE. Reconstructing from gh pr list..."
         BRANCHES=""
         for TICKET_NUM in $(echo "$LEVEL" | tr ',' '\n' | grep .); do
             HEAD="prd-${TICKET_NUM}-requirements"
             if ! git ls-remote --exit-code --heads origin "$HEAD" >/dev/null 2>&1; then
-                echo "❌ Error: Head branch \"$HEAD\" does not exist on origin. Ticketmaster failed to create it. Aborting."
+                log ERROR "Head branch \"$HEAD\" does not exist on origin. Ticketmaster failed to create it. Aborting."
                 exit 1
             fi              
             PR_NUMBER=$(gh pr list -R "$REPO_SLUG" --head "$HEAD" --state open --json number --jq '.[0].number' 2>/dev/null || true)
             if [[ -z "$PR_NUMBER" ]]; then
-                echo "❌ Error: No open PR found for head branch \"$HEAD\". Aborting."
+                log ERROR "No open PR found for head branch \"$HEAD\". Aborting."
                 exit 1
             fi
             [[ -n "$BRANCHES" ]] && BRANCHES+=$'\n'
@@ -250,15 +253,15 @@ while IFS= read -r LEVEL; do
     fi
 
     if [[ -z "$BRANCHES" ]] || [[ "$ACTUAL_COUNT" != "$EXPECTED_COUNT" ]]; then
-        echo "❌ Error: Ticketmaster returned $ACTUAL_COUNT branch(es) for level \"$LEVEL\" but $EXPECTED_COUNT were expected. Aborting."
+        log ERROR "Ticketmaster returned $ACTUAL_COUNT branch(es) for level \"$LEVEL\" but $EXPECTED_COUNT were expected. Aborting."
         exit 1
     fi
 
-    echo "⚪️ Finished creating branches and PRDs for current level."
+    log SUCCESS "Finished creating branches and PRDs for current level!"
 
     review_pull_requests "$BRANCHES"
 
-    echo "⚪️ Generating backpressure..."
+    log INFO "Generating backpressure..."
     rm -f "$PR_TSV_FILE"
     while IFS=$'\t' read -r BASE_BRANCH_NAME _PR_NUMBER; do
         BACKPRESSURE_BRANCH_NAME="$BASE_BRANCH_NAME-backpressure"
@@ -273,7 +276,7 @@ while IFS= read -r LEVEL; do
 
         summarizer "$REPO_SLUG" "$BACKPRESSURE_BRANCH_NAME" "$BASE_BRANCH_NAME"
 
-        echo "⚪️ Generated backpressure for \"$BASE_BRANCH_NAME\"."
+        log SUCCESS "Generated backpressure for \"$BASE_BRANCH_NAME\"!"
     done <<< "$BRANCHES"
 
     BACKPRESSURE_BRANCHES=""
@@ -282,20 +285,20 @@ while IFS= read -r LEVEL; do
     fi
 
     if [[ -z "$BACKPRESSURE_BRANCHES" ]]; then
-        echo "❌ Error: No backpressure branches were generated for level \"$LEVEL\". Aborting."
+        log ERROR "No backpressure branches were generated for level \"$LEVEL\". Aborting."
         exit 1
     fi
 
     EXPECTED_BP_COUNT=$(echo "$BRANCHES" | grep -c .)
     ACTUAL_BP_COUNT=$(echo "$BACKPRESSURE_BRANCHES" | grep -c .)
     if [[ "$ACTUAL_BP_COUNT" != "$EXPECTED_BP_COUNT" ]]; then
-        echo "❌ Error: Generated $ACTUAL_BP_COUNT backpressure branch(es) for level \"$LEVEL\" but $EXPECTED_BP_COUNT were expected. Aborting."
+        log ERROR "Generated $ACTUAL_BP_COUNT backpressure branch(es) for level \"$LEVEL\" but $EXPECTED_BP_COUNT were expected. Aborting."
         exit 1
     fi
 
     review_pull_requests "$BACKPRESSURE_BRANCHES"
 
-    echo "⚪️ Proceeding with implementation..."
+    log INFO "Proceeding with implementation..."
     rm -f "$PR_TSV_FILE"
     while IFS=$'\t' read -r BASE_BRANCH_NAME _PR_NUMBER; do
         # Fail-fast: if any ralph loop fails, abort the entire run
@@ -307,7 +310,7 @@ while IFS= read -r LEVEL; do
 
         summarizer "$REPO_SLUG" "$BASE_BRANCH_NAME" maestro
 
-        echo "⚪️ Implementation for \"$BASE_BRANCH_NAME\" completed."
+        log SUCCESS "Finished implementation for \"$BASE_BRANCH_NAME\"!"
     done <<< "$BACKPRESSURE_BRANCHES"
 
     IMPLEMENTATION_BRANCHES=""
@@ -316,21 +319,21 @@ while IFS= read -r LEVEL; do
     fi
 
     if [[ -z "$IMPLEMENTATION_BRANCHES" ]]; then
-        echo "❌ Error: No implementation branches were generated for level \"$LEVEL\". Aborting."
+        log ERROR "No implementation branches were generated for level \"$LEVEL\". Aborting."
         exit 1
     fi
 
     EXPECTED_IMPL_COUNT=$(echo "$BACKPRESSURE_BRANCHES" | grep -c .)
     ACTUAL_IMPL_COUNT=$(echo "$IMPLEMENTATION_BRANCHES" | grep -c .)
     if [[ "$ACTUAL_IMPL_COUNT" != "$EXPECTED_IMPL_COUNT" ]]; then
-        echo "❌ Error: Generated $ACTUAL_IMPL_COUNT implementation branch(es) for level \"$LEVEL\" but $EXPECTED_IMPL_COUNT were expected. Aborting."
+        log ERROR "Generated $ACTUAL_IMPL_COUNT implementation branch(es) for level \"$LEVEL\" but $EXPECTED_IMPL_COUNT were expected. Aborting."
         exit 1
     fi
 
     review_pull_requests "$IMPLEMENTATION_BRANCHES"
 done <<< "$TREE_LEVELS"
 
-echo "⚪️ Completed implementation plan. Archiving plan and log..."
+log INFO "Archiving plan and log..."
 mv -f "$BLUEPRINT_FILE" "$FOLDER_NAME/plan.md"
 mv -f "$BLUEPRINT_LEVELS_FILE" "$FOLDER_NAME/plan.levels"
 mv -f "$LOG_FILE" "$FOLDER_NAME/maestro.log"
@@ -338,11 +341,11 @@ git add .
 git commit -m "chore(ai): Add Maestro log"
 git push -u origin maestro
 
-echo "⚪️ Opening final PR..."
+log INFO "Opening final PR..."
 summarizer "$REPO_SLUG" maestro main
 view_pull_requests
 
-echo "⚪️ Switching back to main..."
+log INFO "Switching back to main..."
 git checkout main
 
-echo "✅ Done!"
+log SUCCESS "Done! Your requested implementation is ready to be reviewed and merged!"

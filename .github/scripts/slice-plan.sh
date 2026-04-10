@@ -11,6 +11,8 @@
 
 set -euo pipefail
 
+source .github/scripts/log.sh
+
 if [ "$#" -ne 3 ]; then
     echo "Usage: $0 <blueprint-file> <ticket-ordinals> <output-path>" >&2
     exit 1
@@ -21,12 +23,12 @@ LEVEL="$2"
 OUT="$3"
 
 if [ ! -s "$SRC" ]; then
-    echo "❌ Error: Blueprint file '$SRC' does not exist or is empty." >&2
+    log ERROR "Blueprint file '$SRC' does not exist or is empty." >&2
     exit 1
 fi
 
 if [ -z "$LEVEL" ]; then
-    echo "❌ Error: Empty ticket ordinal list." >&2
+    log ERROR "Empty ticket ordinal list." >&2
     exit 1
 fi
 
@@ -71,8 +73,8 @@ BEGIN {
 
 ACTUAL_COUNT=$(grep -c '^#### Ticket ' "$OUT" || true)
 if [ "$ACTUAL_COUNT" != "$EXPECTED_COUNT" ]; then
-    echo "❌ Error: slice-plan expected $EXPECTED_COUNT ticket section(s) for level [$LEVEL] but wrote $ACTUAL_COUNT to '$OUT'." >&2
+    log ERROR "slice-plan expected $EXPECTED_COUNT ticket section(s) for level [$LEVEL] but wrote $ACTUAL_COUNT to '$OUT'." >&2
     exit 1
 fi
 
-echo "⚪️ Wrote sliced plan to $OUT ($ACTUAL_COUNT ticket section(s))."
+log INFO "Wrote sliced plan to $OUT ($ACTUAL_COUNT ticket section(s))."

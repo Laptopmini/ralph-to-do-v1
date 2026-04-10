@@ -7,16 +7,15 @@
 
 set -euo pipefail
 
-# Functions
-
-prompt() { bash .github/scripts/prompt.sh "$@"; }
+source .github/scripts/prompt.sh
+source .github/scripts/log.sh
 
 # Main
 
 LEDGER=$(tail -n 5 .agent-ledger.jsonl || echo "No history.")
 PRD=$(cat PRD.md)
 
-echo "🟢 Starting to generate backpressure..."
+log INFO "Starting to generate backpressure..."
 
 AGENT_PROMPT="
 Read the following PRD. For each unchecked task, generate exactly the files described in that task — no more, no less.
@@ -63,4 +62,4 @@ $PRD
 
 prompt "$AGENT_PROMPT" --allowedTools "Read,Write,Edit,Glob,Grep,Bash(npm run lint),Bash(npm run check-types),Bash(npm test),Bash(npx jest:*),Bash(npx playwright:*),Bash(npx tsc:*),Bash(npx biome:*)"  --model opus
 
-echo "✅ Tests generated. Please review them, and then execute the Ralph loop."
+log INFO "Backpressure prompt completed."
