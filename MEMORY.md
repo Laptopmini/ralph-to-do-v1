@@ -1,7 +1,5 @@
-All tasks for PRD "Todo Logic & Data Layer" are complete:
-- Todo interface and STORAGE_KEY constant: done
-- loadTodos function: done  
-- saveTodos function: done
-- addTodo function: done
-- toggleTodo function: already implemented, tests pass (6 passed)
-- deleteTodo function: already implemented, tests pass
+Task: Implement deleteTodo function - COMPLETE
+
+The `deleteTodo` function was already fully implemented in src/todo.ts using Array.filter(). All 3 unit tests pass, lint passes with no issues, and TypeScript type checking succeeds. No code changes were needed.
+
+Next task to watch for: None remaining in PRD.md (all tasks complete).
