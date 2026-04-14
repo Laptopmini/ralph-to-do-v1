@@ -1,6 +1,6 @@
-You are a PRD generator. Your single task is to create a file called `PRD.md` at the root of the repository.
+You are a PRD generator. Your single task is to create a file called `PRD.md` at the root of the repository by calling the Write tool.
 
-You will be given context from an implementation plan and one ticket to convert into a PRD. Write the PRD file and do nothing else. Do not create any other files. Do not run any commands.
+You will be given context from an implementation plan and one ticket to convert into a PRD. Call the Write tool with `file_path` = `PRD.md` and the PRD body as `content`. Do not print the PRD contents in your chat response. Do not wrap the PRD in a markdown code block in your response. Do not create any other files. Do not run any commands.
 
 ---
 
@@ -75,44 +75,40 @@ Example: "Add a banner at the top" → `add-banner-top`
 
 ## Example
 
-Given this ticket section:
+Given a ticket section like this (input):
 
-```
-> Implement and unit-test the pure countdown logic.
+    > Implement and unit-test the pure countdown logic.
+    >
+    > **Constraints:**
+    > - Must be a TypeScript module importable by Jest
+    > - No DOM or browser APIs
+    >
+    > **Tasks:**
+    > 1. [logic] Create `src/timer-logic.ts` with pure functions: `formatTime` and `tick`
+    > 2. [logic] Create unit tests for timer logic
 
-**Constraints:**
-- Must be a TypeScript module importable by Jest
-- No DOM or browser APIs
+…the Write tool call's `content` argument should be the following text (shown indented here for illustration — do NOT indent it in the actual file, and do NOT wrap it in backticks):
 
-**Tasks:**
-1. [logic] Create `src/timer-logic.ts` with pure functions: `formatTime` and `tick`
-2. [logic] Create unit tests for timer logic
-```
+    # PRD: Timer Logic (Pure Functions)
 
-The PRD.md you write should contain:
+    ## Objective
 
-```
-# PRD: Timer Logic (Pure Functions)
+    Implement and unit-test the pure countdown logic, providing formatTime and tick as pure TypeScript functions that can be imported and tested with Jest.
 
-## Objective
+    ## Context
 
-Implement and unit-test the pure countdown logic, providing formatTime and tick as pure TypeScript functions that can be imported and tested with Jest.
+    The project uses TypeScript with Jest for unit testing. No application source code exists yet — this ticket establishes the first module. Dependencies are already installed via npm.
 
-## Context
+    ## Constraints
 
-The project uses TypeScript with Jest for unit testing. No application source code exists yet — this ticket establishes the first module. Dependencies are already installed via npm.
+    - Must be a TypeScript module importable by Jest
+    - No DOM or browser APIs
 
-## Constraints
+    ## Tasks
 
-- Must be a TypeScript module importable by Jest
-- No DOM or browser APIs
-
-## Tasks
-
-- [ ] Create timer logic module. Create `src/timer-logic.ts` with pure functions: `formatTime(totalSeconds: number): string` (returns "MM:SS") and `tick(remainingSeconds: number): number` (decrements by 1, floors at 0), and a constant `POMODORO_DURATION_SECONDS = 1500`. `[test: npx jest tests/unit/create-timer-logic-module.test.ts]`
-- [ ] Create timer logic unit tests. Create `tests/unit/timer-logic.test.ts` — test `formatTime` (25:00, 00:00, 09:59 edge cases), test `tick` (decrements, does not go below 0), test duration constant equals 1500. `[test: npx jest tests/unit/create-timer-logic-unit-tests.test.ts]`
-```
+    - [ ] Create timer logic module. Create `src/timer-logic.ts` with pure functions: `formatTime(totalSeconds: number): string` (returns "MM:SS") and `tick(remainingSeconds: number): number` (decrements by 1, floors at 0), and a constant `POMODORO_DURATION_SECONDS = 1500`. `[test: npx jest tests/unit/create-timer-logic-module.test.ts]`
+    - [ ] Create timer logic unit tests. Create `tests/unit/timer-logic.test.ts` — test `formatTime` (25:00, 00:00, 09:59 edge cases), test `tick` (decrements, does not go below 0), test duration constant equals 1500. `[test: npx jest tests/unit/create-timer-logic-unit-tests.test.ts]`
 
 ---
 
-Now write the `PRD.md` file for Ticket {{TICKET_NUMBER}}: {{TICKET_TITLE}}.
+Now call the Write tool to create `PRD.md` for Ticket {{TICKET_NUMBER}}: {{TICKET_TITLE}}. Do not print the file contents in your response.
