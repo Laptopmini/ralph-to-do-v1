@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source .github/scripts/helpers/log.sh
+
 # Check if a ticket number was provided
 if [ -z "$1" ]; then
-  echo "Error: Ticket Number is required."
-  echo "Usage: $0 <ticket-number>"
+  log ERROR "Ticket Number is required."
+  log ERROR "Usage: $0 <ticket-number>"
   exit 1
 fi
 
 TICKET="$1"
-MAIN_BRANCH="maestro"
-WORKFLOW_BRANCH="prd-${TICKET}"
-REQ_BRANCH="${WORKFLOW_BRANCH}-requirements"
+DEV_BRANCH="maestro"
+TICKET_BRANCH="prd-${TICKET}"
+REQ_BRANCH="${TICKET_BRANCH}-requirements"
 
 # Helper function to check if a branch exists locally
 has_local_branch() {
@@ -35,6 +37,7 @@ checkout_branch() {
     else
         git checkout -b "$branch_name" || { echo "Failed to checkout $branch_name (new branch)"; exit 1; }
         git push -u origin "$branch_name" || { echo "Failed to push origin/$branch_name"; exit 1; }
+        log INFO "Created branch $branch_name"
     fi
 }
 
@@ -48,12 +51,12 @@ git fetch origin --prune || true
 git pull origin main || true
 
 # Create/checkout meaestro branch
-checkout_branch "$MAIN_BRANCH"
+checkout_branch "$DEV_BRANCH"
 
 # Create/checkout workflow branch
-checkout_branch "$WORKFLOW_BRANCH"
+checkout_branch "$TICKET_BRANCH"
 
 # Create/checkout requirements branch
 checkout_branch "$REQ_BRANCH"
 
-echo "You are now on branch $(git branch --show-current). Proceed to next step to generate PRD."
+log INFO "Now performing within branch $(git branch --show-current)"

@@ -7,8 +7,8 @@
 
 set -euo pipefail
 
-source .github/scripts/log.sh
-source .github/scripts/prompt.sh
+source .github/scripts/helpers/log.sh
+source .github/scripts/agents/prompt.sh
 
 # Settings
 
@@ -98,7 +98,10 @@ while true; do
     RALPH_PROMPT=$(cat .github/prompts/ralph.md 2>/dev/null || echo "You are an autonomous developer.")
     LEDGER_CONTEXT=$(tail -n 5 .agent-ledger.jsonl 2>/dev/null || echo "No history.")
     MEMORY_CONTEXT=$(cat MEMORY.md 2>/dev/null || echo "Scratchpad empty.")
-    PRD_CONTENT=$(cat PRD.md)
+    PRD_CONTENT=$(awk -v task="$CURRENT_TASK" '
+        { print }
+        $0 == task { exit }
+    ' PRD.md)
 
     AGENT_PROMPT="
 $RALPH_PROMPT${ERROR_FEEDBACK:+$'\n'}$ERROR_FEEDBACK
@@ -121,7 +124,7 @@ $PRD_CONTENT
     set +e
     OUTPUT=$(prompt "$AGENT_PROMPT" \
         --allowedTools "Read,Edit,Write,Glob,Grep,Bash" \
-        --model qwen/qwen3.5-35b-a3b)
+        --model "${JUNIOR_DEVELOPER_MODEL:-sonnet}")
     PROMPT_EXIT=$?
     set -e
 
@@ -146,7 +149,7 @@ $PRD_CONTENT
     PROPOSED_LEDGER=$(echo "$OUTPUT" | awk '/<ledger>/{flag=1; next} /<\/ledger>/{flag=0} flag')
 
     log INFO "Running Validation: $TARGETED_TEST"
-    ALLOWED_PREFIXES=("npm test" "npx jest" "npx playwright" "npx tsc" "npx biome")
+    ALLOWED_PREFIXES=("npm test" "npx jest" "npx playwright" "npx tsc" "npx biome" "bash scripts/")
     ALLOWED=false
     for prefix in "${ALLOWED_PREFIXES[@]}"; do
         if [[ "$TARGETED_TEST" == "$prefix"* ]]; then
@@ -194,7 +197,7 @@ $PRD_CONTENT
         }' PRD.md > PRD.md.tmp && mv PRD.md.tmp PRD.md
         
         git add .
-        git commit -m "chore(ai): $CURRENT_TASK_LABEL" 
+        git commit -m "feat(ai): $CURRENT_TASK_LABEL" 
     else
         log ERROR "Validation failed. The agent must try again."
         log INFO "Test Output:\n$TEST_OUTPUT"

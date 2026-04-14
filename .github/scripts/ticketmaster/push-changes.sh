@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source .github/scripts/helpers/log.sh
+
 # Validate that the required arguments are provided
 if [ $# -lt 2 ]; then
-    echo "Error: Missing arguments." >&2
-    echo "Usage: $0 <ticket_number> \"<ticket_title>\"" >&2
+    log ERROR "Missing arguments." >&2
+    log ERROR "Usage: $0 <ticket_number> \"<ticket_title>\"" >&2
     exit 1
 fi
 
@@ -12,11 +14,7 @@ TICKET_NUMBER="$1"
 TICKET_TITLE="$2"
 
 # Determine current repo slug
-REPO_SLUG=$(bash .github/scripts/repo-slug.sh)
-if [ -z "$REPO_SLUG" ]; then
-    echo "Error: Failed to retrieve REPO_SLUG." >&2
-    exit 1
-fi
+REPO_SLUG="${REPO_SLUG:-$(bash .github/scripts/helpers/repo-slug.sh)}"
 
 # Define branch names based on the ticket number
 BASE_BRANCH="prd-$TICKET_NUMBER"
@@ -24,7 +22,7 @@ HEAD_BRANCH="prd-$TICKET_NUMBER-requirements"
 
 # Perform Git operations
 git add PRD.md
-git commit -m "chore(ai): add PRD for ticket $TICKET_NUMBER"
+git commit -m "feat($TICKET_NUMBER): Created PRD for $TICKET_TITLE"
 git push -u origin "$HEAD_BRANCH"
 
 # Create Pull Request
@@ -36,11 +34,10 @@ gh pr create \
     --body "This PR is for requirements being generated into PRD.md for Ticket $TICKET_NUMBER."
 
 # Capture the PR number by querying the branch details
-# We use --repo to ensure we query the correct repository context
 PR_NUMBER=$(gh pr view "$HEAD_BRANCH" --repo "$REPO_SLUG" --json number --jq '.number')
 
 if [ -z "$PR_NUMBER" ]; then
-    echo "Error: Could not retrieve PR number for $HEAD_BRANCH." >&2
+    log ERROR "Error: Could not retrieve PR number for $HEAD_BRANCH." >&2
     exit 1
 fi
 
@@ -48,3 +45,4 @@ fi
 printf '%s\t%s\n' "$BASE_BRANCH" "$PR_NUMBER" >> .maestro.pull-requests.tsv
 
 echo "Your generated PRD for ticket $TICKET_NUMBER was succefully pushed! You can proceed to the next ticket, if any."
+log SUCCESS "Branches, PRD and PR created for ticket $TICKET_NUMBER!"

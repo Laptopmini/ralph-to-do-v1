@@ -7,8 +7,11 @@
 
 set -euo pipefail
 
-source .github/scripts/log.sh
-source .github/scripts/prompt.sh
+source .github/scripts/helpers/log.sh
+source .github/scripts/agents/prompt.sh
+source .github/scripts/summarizer.sh
+
+# FIXME: Ralph could benefit from a planning stage before executing in the same iteration. Leverage a thinking model, and execute with another?
 
 # Settings
 
@@ -19,11 +22,22 @@ BLUEPRINT_FILE=".maestro.blueprint.md"
 BLUEPRINT_LEVELS_FILE=".maestro.blueprint.levels"
 SLICE_FILE=".maestro.level.md"
 PR_TSV_FILE=".maestro.pull-requests.tsv"
-REPO_SLUG=$(bash .github/scripts/repo-slug.sh)
+
+# Models
+
+export STAFF_DEVELOPER_MODEL="opus" # Planning & Backpressure
+export SENIOR_DEVELOPER_MODEL="qwen/qwen3.5-35b-a3b" # Ticket Breakdown
+export MIDLEVEL_DEVELOPER_MODEL="qwen/qwen3-coder-30b" # PR Descriptions
+export JUNIOR_DEVELOPER_MODEL="qwen/qwen3-coder-30b" # Implementation
+
+# FIXME: Try using minimax/MiniMax-M2.7 for Planning & Backpressure
+# FIXME: Try using google/gemma-4-26b-a4b for PR Descriptions
+
+# Variables
+
+export REPO_SLUG=$(bash .github/scripts/helpers/repo-slug.sh)
 
 # Functions
-
-summarizer() { prompt "/summarizer $*" --allowedTools "Read,Write,Bash" --model qwen/qwen3.5-35b-a3b; }
 
 ask_continue() { read -n 1 -s -r -p "$*"$'\n' < /dev/tty; }
 
@@ -113,12 +127,18 @@ if [ ! -s "$BLUEPRINT_FILE" ] || [ ! -s "$BLUEPRINT_LEVELS_FILE" ]; then
     fi
 fi
 
+if [[ -z "$REPO_SLUG" ]]; then
+    log ERROR "Failed to retrieve REPO_SLUG."
+    return 1
+fi
+
 # Move the log file backup to the main log file if it exists
 if [[ -s "${LOG_FILE_BACKUP:-}" ]]; then
     mv -f "$LOG_FILE_BACKUP" "$LOG_FILE"
 else
     rm -f "$LOG_FILE_BACKUP"
 fi
+
 # Capture all output to the log file
 exec > >(tee -a "$LOG_FILE")
 exec 2>&1
@@ -141,7 +161,8 @@ while $MISSING_BLUEPRINT; do
         REUSING_EXISTING_PLAN=true
     else
         log INFO "Generating implementation plan..."
-        TREE_LEVELS=$(prompt "/blueprint $*" --allowedTools "Read,Glob,Grep,Write" --model opus)
+        # FIXME: Change this into a pure prompt rather than a skill
+        TREE_LEVELS=$(prompt "/blueprint $*" --allowedTools "Read,Glob,Grep,Write" --model "$STAFF_DEVELOPER_MODEL")
 
         # FIXME: Should tree levels be written by the skill using a script to avoid divergence?
 
@@ -208,19 +229,17 @@ LEVEL_INDEX=0
 while IFS= read -r LEVEL; do
     log INFO "Beginning level \"$LEVEL\"..."
     LEVEL_INDEX=$((LEVEL_INDEX + 1))
-    SLICED="$SLICE_FILE"
-    log INFO "Slicing plan into \"$SLICED\"..."
-    bash .github/scripts/slice-plan.sh "$BLUEPRINT_FILE" "$LEVEL" "$SLICED"
-    if [ ! -s "$SLICED" ]; then
-        log ERROR "Sliced plan '$SLICED' is missing or empty. Aborting."
-        exit 1
-    fi
 
     log INFO "Generating PRD(s)..."
     rm -f "$PR_TSV_FILE"
-    prompt "/ticketmaster \"$SLICED\"" --allowedTools "Read,Write,Bash,Glob,Grep" --model qwen/qwen3.5-35b-a3b || true
-
-    mv -f "$SLICED" "$FOLDER_NAME/plan-level-$LEVEL_INDEX.md"
+    for TICKET_NUM in $(echo "$LEVEL" | tr ',' '\n' | grep .); do
+        TICKETMASTER_PROMPT=$(bash .github/scripts/ticketmaster/get-prompt.sh "$BLUEPRINT_FILE" "$TICKET_NUM")
+        bash .github/scripts/ticketmaster/checkout.sh "$TICKET_NUM"
+        prompt "$TICKETMASTER_PROMPT" --allowedTools "Write" --model "$SENIOR_DEVELOPER_MODEL" || true
+        TICKET_TITLE=$(awk -v n="$TICKET_NUM" '$0 ~ "^#### Ticket " n ":" { sub(/^#### Ticket [0-9]+: */, ""); print; exit }' "$BLUEPRINT_FILE")
+        bash .github/scripts/ticketmaster/push-changes.sh "$TICKET_NUM" "$TICKET_TITLE"
+        echo "$TICKETMASTER_PROMPT" > "$FOLDER_NAME/ticketmaster-$TICKET_NUM.md"
+    done
 
     EXPECTED_COUNT=$(echo "$LEVEL" | tr ',' '\n' | grep -c .)
 
@@ -271,10 +290,10 @@ while IFS= read -r LEVEL; do
         git checkout -b "$BACKPRESSURE_BRANCH_NAME"
         npm i && npm run backpressure
         git add .
-        git diff --cached --quiet || git commit -m "chore(ai): Backpressure"
+        git diff --cached --quiet || git commit -m "feat(ai): Backpressure for $BASE_BRANCH_NAME"
         git push -u origin "$BACKPRESSURE_BRANCH_NAME"
 
-        summarizer "$REPO_SLUG" "$BACKPRESSURE_BRANCH_NAME" "$BASE_BRANCH_NAME"
+        summarizer "$BACKPRESSURE_BRANCH_NAME" "$BASE_BRANCH_NAME"
 
         log SUCCESS "Generated backpressure for \"$BASE_BRANCH_NAME\"!"
     done <<< "$BRANCHES"
@@ -308,7 +327,7 @@ while IFS= read -r LEVEL; do
         git diff --cached --quiet || git commit -m "chore(ai): Update Ralph log"
         git push -u origin "$BASE_BRANCH_NAME"
 
-        summarizer "$REPO_SLUG" "$BASE_BRANCH_NAME" maestro
+        summarizer "$BASE_BRANCH_NAME" maestro
 
         log SUCCESS "Finished implementation for \"$BASE_BRANCH_NAME\"!"
     done <<< "$BACKPRESSURE_BRANCHES"
@@ -338,11 +357,11 @@ mv -f "$BLUEPRINT_FILE" "$FOLDER_NAME/plan.md"
 mv -f "$BLUEPRINT_LEVELS_FILE" "$FOLDER_NAME/plan.levels"
 mv -f "$LOG_FILE" "$FOLDER_NAME/maestro.log"
 git add .
-git commit -m "chore(ai): Add Maestro log"
+git commit -m "chore(ai): Add Maestro log for $FOLDER_NAME"
 git push -u origin maestro
 
 log INFO "Opening final PR..."
-summarizer "$REPO_SLUG" maestro main
+summarizer maestro main
 view_pull_requests
 
 log INFO "Switching back to main..."
