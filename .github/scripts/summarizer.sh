@@ -46,22 +46,36 @@ summarizer() {
     TEMPLATE=$(cat "$TEMPLATE_FILE")
 
     # Render placeholders with awk gsub.
-    # The diff is appended raw after the template to avoid
-    # awk special-character corruption (& and \ in code diffs).
-    local RENDERED
-    RENDERED=$(awk \
+    # DIFF_OUTPUT is injected by splitting at its placeholder to avoid
+    # awk -v newline limitations and gsub corruption of & and \ in diffs.
+    local BEFORE_DIFF AFTER_DIFF
+    BEFORE_DIFF=$(awk \
         -v head_branch="$HEAD_BRANCH" \
         -v base_branch="$BASE_BRANCH" \
         -v commit_prefix="$COMMIT_PREFIX" \
-        -v diff_output="$DIFF_OUTPUT" \
-    '{
-        line = $0
-        gsub(/\{\{HEAD_BRANCH\}\}/, head_branch, line)
-        gsub(/\{\{BASE_BRANCH\}\}/, base_branch, line)
-        gsub(/\{\{COMMIT_PREFIX\}\}/, commit_prefix, line)
-        gsub(/\{\{DIFF_OUTPUT\}\}/, diff_output, line)
-        print line
-    }' <<< "$TEMPLATE")
+        '/\{\{DIFF_OUTPUT\}\}/{exit}
+        {
+            line = $0
+            gsub(/\{\{HEAD_BRANCH\}\}/, head_branch, line)
+            gsub(/\{\{COMMIT_PREFIX\}\}/, commit_prefix, line)
+            print line
+        }' <<< "$TEMPLATE")
+
+    AFTER_DIFF=$(awk \
+        -v head_branch="$HEAD_BRANCH" \
+        -v base_branch="$BASE_BRANCH" \
+        -v commit_prefix="$COMMIT_PREFIX" \
+        '/\{\{DIFF_OUTPUT\}\}/{found=1; next}
+        found {
+            line = $0
+            gsub(/\{\{HEAD_BRANCH\}\}/, head_branch, line)
+            gsub(/\{\{BASE_BRANCH\}\}/, base_branch, line)
+            gsub(/\{\{COMMIT_PREFIX\}\}/, commit_prefix, line)
+            print line
+        }' <<< "$TEMPLATE")
+
+    local RENDERED
+    RENDERED=$(printf '%s\n%s\n%s' "$BEFORE_DIFF" "$DIFF_OUTPUT" "$AFTER_DIFF")
 
     # --- Step 4: Execute via prompt() ---
     local BODY_FILE="${PR_SUMMARY_FILE:-'.maestro.summary.md'}"

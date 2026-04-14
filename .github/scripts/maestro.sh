@@ -33,6 +33,8 @@ export JUNIOR_DEVELOPER_MODEL="qwen/qwen3-coder-30b" # Implementation
 
 # FIXME: Try using minimax/MiniMax-M2.7 for Planning & Backpressure
 
+# FIXME: Update blueprint to not be a skill but a pure prompt
+
 # Variables
 
 export REPO_SLUG=$(bash .github/scripts/helpers/repo-slug.sh)
