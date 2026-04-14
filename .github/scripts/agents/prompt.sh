@@ -119,10 +119,12 @@ prompt() {
                 CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING="1"
             )
         else
+            local OPENCODE_CUSTOM_PROVIDER="lmstudio"
             # FIXME: If MiniMax-M2.7, use `minimax` provider
+
             LOCAL_ENV=(
                 OPENCODE_PERMISSION="$(get_opencode_permissions "$ALLOWED")" # Inlined json permissions config
-                OPENCODE_CUSTOM_PROVIDER="lmstudio"
+                OPENCODE_CUSTOM_PROVIDER="$OPENCODE_CUSTOM_PROVIDER"
                 OPENCODE_CUSTOM_PROVIDER_NAME="LM Studio (local)"
                 OPENCODE_CUSTOM_MODEL="$MODEL"
                 OPENCODE_CUSTOM_MODEL_NAME="$MODEL"
