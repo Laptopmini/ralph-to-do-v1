@@ -53,18 +53,15 @@ summarizer() {
         -v head_branch="$HEAD_BRANCH" \
         -v base_branch="$BASE_BRANCH" \
         -v commit_prefix="$COMMIT_PREFIX" \
+        -v diff_output="$DIFF_OUTPUT" \
     '{
         line = $0
         gsub(/\{\{HEAD_BRANCH\}\}/, head_branch, line)
         gsub(/\{\{BASE_BRANCH\}\}/, base_branch, line)
         gsub(/\{\{COMMIT_PREFIX\}\}/, commit_prefix, line)
+        gsub(/\{\{DIFF_OUTPUT\}\}/, diff_output, line)
         print line
     }' <<< "$TEMPLATE")
-
-    # Append the raw diff after the "## Diff" heading (blank line for markdown)
-    RENDERED="${RENDERED}
-
-${DIFF_OUTPUT}"
 
     # --- Step 4: Execute via prompt() ---
     local BODY_FILE="${PR_SUMMARY_FILE:-'.maestro.summary.md'}"
