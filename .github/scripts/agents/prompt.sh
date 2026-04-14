@@ -173,7 +173,7 @@ prompt() {
         RAW=$(mktemp)
         env "${LOCAL_ENV[@]}" claude -p "$AGENT_PROMPT" \
             --output-format stream-json --verbose \
-            "${EXTRA_ARGS[@]}" 2>&1 \
+            "${EXTRA_ARGS[@]:-}" 2>&1 \
             | tee "$RAW" \
             | tee >(jq -r --unbuffered 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' >&2) \
             | jq -r 'select(.type=="result") | .result'
@@ -205,7 +205,7 @@ prompt() {
             return 1
         fi
 
-        env "${LOCAL_ENV[@]}" opencode run "$AGENT_PROMPT" "${EXTRA_ARGS[@]}"
+        env "${LOCAL_ENV[@]}" opencode run "$AGENT_PROMPT" "${EXTRA_ARGS[@]:-}"
         ENGINE_EXIT=$?
     else
         # FIXME: Add support for Aider (https://aider.chat/)
