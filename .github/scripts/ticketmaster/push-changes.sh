@@ -26,7 +26,7 @@ if [[ ! -s PRD.md ]]; then
 fi
 
 # Perform Git operations
-git add PRD.md
+git add PRD.md docs/
 git commit -m "feat($TICKET_NUMBER): Created PRD for $TICKET_TITLE"
 git push -u origin "$HEAD_BRANCH"
 

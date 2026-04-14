@@ -67,10 +67,10 @@ summarizer() {
 ${DIFF_OUTPUT}"
 
     # --- Step 4: Execute via prompt() ---
-    prompt "$RENDERED" --allowedTools "Write" --model "${MIDLEVEL_DEVELOPER_MODEL:-haiku}"
+    local BODY_FILE="${PR_SUMMARY_FILE:-'.maestro.summary.md'}"
+    prompt "$RENDERED" --allowedTools "Write($BODY_FILE),Edit($BODY_FILE)" --model "${MIDLEVEL_DEVELOPER_MODEL:-haiku}"
 
     # --- Step 5: Extract title and prepare PR body ---
-    local BODY_FILE="${PR_SUMMARY_FILE:-'.maestro.summary.md'}"
     if [[ ! -s "$BODY_FILE" ]]; then
         log ERROR "Agent did not produce $BODY_FILE"
         return 1

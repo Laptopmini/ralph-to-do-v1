@@ -164,7 +164,7 @@ while $MISSING_BLUEPRINT; do
     else
         log INFO "Generating implementation plan..."
         # FIXME: Change this into a pure prompt rather than a skill
-        TREE_LEVELS=$(prompt "/blueprint $*" --allowedTools "Read,Glob,Grep,Write" --model "$STAFF_DEVELOPER_MODEL")
+        TREE_LEVELS=$(prompt "/blueprint $*" --allowedTools "Read,Glob,Grep,Write($BLUEPRINT_FILE),Edit($BLUEPRINT_FILE)" --model "$STAFF_DEVELOPER_MODEL")
 
         # FIXME: Should tree levels be written by the skill using a script to avoid divergence?
 
@@ -237,7 +237,7 @@ while IFS= read -r LEVEL; do
     for TICKET_NUM in $(echo "$LEVEL" | tr ',' '\n' | grep .); do
         TICKETMASTER_PROMPT=$(bash .github/scripts/ticketmaster/get-prompt.sh "$BLUEPRINT_FILE" "$TICKET_NUM")
         bash .github/scripts/ticketmaster/checkout.sh "$TICKET_NUM"
-        prompt "$TICKETMASTER_PROMPT" --allowedTools "Write" --model "$SENIOR_DEVELOPER_MODEL" --print-logs || true
+        prompt "$TICKETMASTER_PROMPT" --allowedTools "Write(PRD.md),Edit(PRD.md)" --model "$SENIOR_DEVELOPER_MODEL" || true
         TICKET_TITLE=$(awk -v n="$TICKET_NUM" '$0 ~ "^#### Ticket " n ":" { sub(/^#### Ticket [0-9]+: */, ""); print; exit }' "$BLUEPRINT_FILE")
         bash .github/scripts/ticketmaster/push-changes.sh "$TICKET_NUM" "$TICKET_TITLE"
         echo "$TICKETMASTER_PROMPT" > "$FOLDER_NAME/ticketmaster-$TICKET_NUM.md"
