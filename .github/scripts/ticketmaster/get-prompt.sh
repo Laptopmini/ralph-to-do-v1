@@ -82,23 +82,29 @@ if [ -z "$TICKET_TITLE" ]; then
     exit 1
 fi
 
-# Read template and perform placeholder substitution
-TEMPLATE=$(cat "$TEMPLATE_FILE")
-
 # Use awk for safe multi-line substitution (bash string replacement can't
 # handle newlines in the replacement value reliably across all shells).
-RENDERED=$(awk \
-    -v plan_ctx="$PLAN_CONTEXT" \
-    -v ticket_sec="$TICKET_SECTION" \
-    -v ticket_num="$TICKET_NUM" \
-    -v ticket_title="$TICKET_TITLE" \
-'{
-    line = $0
-    gsub(/\{\{PLAN_CONTEXT\}\}/, plan_ctx, line)
-    gsub(/\{\{TICKET_SECTION\}\}/, ticket_sec, line)
-    gsub(/\{\{TICKET_NUMBER\}\}/, ticket_num, line)
-    gsub(/\{\{TICKET_TITLE\}\}/, ticket_title, line)
-    print line
-}' <<< "$TEMPLATE")
+# Set environment variables to avoid issues with newlines in command-line args.
+export PLAN_CONTEXT
+export TICKET_SECTION
+export TICKET_NUM
+export TICKET_TITLE
+
+RENDERED=$(awk '
+    BEGIN {
+        plan_ctx = ENVIRON["PLAN_CONTEXT"]
+        ticket_sec = ENVIRON["TICKET_SECTION"]
+        ticket_num = ENVIRON["TICKET_NUM"]
+        ticket_title = ENVIRON["TICKET_TITLE"]
+    }
+    {
+        line = $0
+        gsub(/\{\{PLAN_CONTEXT\}\}/, plan_ctx, line)
+        gsub(/\{\{TICKET_SECTION\}\}/, ticket_sec, line)
+        gsub(/\{\{TICKET_NUMBER\}\}/, ticket_num, line)
+        gsub(/\{\{TICKET_TITLE\}\}/, ticket_title, line)
+        print line
+    }
+' "$TEMPLATE_FILE")
 
 printf '%s\n' "$RENDERED"

@@ -22,6 +22,7 @@ BLUEPRINT_FILE=".maestro.blueprint.md"
 BLUEPRINT_LEVELS_FILE=".maestro.blueprint.levels"
 SLICE_FILE=".maestro.level.md"
 PR_TSV_FILE=".maestro.pull-requests.tsv"
+PR_SUMMARY_FILE=".maestro.summary.md"
 
 # Models
 
@@ -36,6 +37,7 @@ export JUNIOR_DEVELOPER_MODEL="qwen/qwen3-coder-30b" # Implementation
 # Variables
 
 export REPO_SLUG=$(bash .github/scripts/helpers/repo-slug.sh)
+export PR_SUMMARY_FILE
 
 # Functions
 
@@ -102,7 +104,7 @@ review_pull_requests() {
 
 cleanup() {
     local exit_code=$?
-    rm -f "$LOCK_FILE" "$LOG_FILE" "$PR_TSV_FILE"
+    rm -f "$LOCK_FILE" "$LOG_FILE" "$PR_TSV_FILE" "$PR_SUMMARY_FILE"
     if [[ $exit_code -eq 0 ]]; then
         rm -f "$BLUEPRINT_FILE" "$BLUEPRINT_LEVELS_FILE" "$SLICE_FILE"
     fi

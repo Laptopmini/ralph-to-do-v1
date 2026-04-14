@@ -70,7 +70,7 @@ ${DIFF_OUTPUT}"
     prompt "$RENDERED" --allowedTools "Write" --model "${MIDLEVEL_DEVELOPER_MODEL:-haiku}"
 
     # --- Step 5: Extract title and prepare PR body ---
-    local BODY_FILE=".maestro.summary.md"
+    local BODY_FILE="${PR_SUMMARY_FILE:-'.maestro.summary.md'}"
     if [[ ! -s "$BODY_FILE" ]]; then
         log ERROR "Agent did not produce $BODY_FILE"
         return 1
