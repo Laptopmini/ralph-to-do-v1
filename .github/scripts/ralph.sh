@@ -13,8 +13,10 @@ source .github/scripts/agents/prompt.sh
 # Settings
 
 LOCK_FILE=".ralph.lock"
-MAX_LOOPS=20
+MAX_LOOPS=20 # FIXME: Should be MAX_LOOPS_PER_TASK, or a multiple of the number of tasks
 TYPE_CHECK_CMD="npm run check-types"
+UNIT_TEST_CMD="npx jest --silent --no-verbose"
+E2E_TEST_CMD="npx playwright test --reporter=line"
 
 # Main
 
@@ -181,15 +183,20 @@ $PRD_CONTENT
     # Add the targeted test command
     TASK_VALIDATION+=("$TARGETED_TEST")
 
-    # If this is the last task, include a final typecheck
+    # Combine the required task validations into a single array
+    COMBINED_VALIDATION=("${TASK_VALIDATION[@]}")
     if [ "$UNCHECKED_COUNT" -eq 1 ]; then
+        # If this is the last task, include a final typecheck & full test suite
         TASK_VALIDATION+=("$TYPE_CHECK_CMD")
         PREVIOUS_TASK_VALIDATION_LOOKUP[$TYPE_CHECK_CMD]=1
-    fi
 
-    # Make sure previous tasks are still passing
-    COMBINED_VALIDATION=("${TASK_VALIDATION[@]}")
-    if [[ ${#PREVIOUS_TASK_VALIDATION[@]} -gt 0 ]]; then
+        TASK_VALIDATION+=("$UNIT_TEST_CMD")
+        PREVIOUS_TASK_VALIDATION_LOOKUP[$UNIT_TEST_CMD]=1
+
+        TASK_VALIDATION+=("$E2E_TEST_CMD")
+        PREVIOUS_TASK_VALIDATION_LOOKUP[$E2E_TEST_CMD]=1
+    elif [[ ${#PREVIOUS_TASK_VALIDATION[@]} -gt 0 ]]; then
+        # Make sure previous tasks are still passing
         COMBINED_VALIDATION+=("${PREVIOUS_TASK_VALIDATION[@]}")
     fi
 

@@ -229,7 +229,7 @@ fi
 
 log INFO "Proceeding through implementation tree levels..."
 LEVEL_INDEX=0
-while IFS= read -r LEVEL; do
+while IFS= read -r LEVEL <&3; do
     log INFO "Beginning level \"$LEVEL\"..."
     LEVEL_INDEX=$((LEVEL_INDEX + 1))
 
@@ -353,7 +353,7 @@ while IFS= read -r LEVEL; do
     fi
 
     review_pull_requests "$IMPLEMENTATION_BRANCHES"
-done <<< "$TREE_LEVELS"
+done 3<<< "$TREE_LEVELS"
 
 log INFO "Archiving plan and log..."
 mv -f "$BLUEPRINT_FILE" "$FOLDER_NAME/plan.md"
