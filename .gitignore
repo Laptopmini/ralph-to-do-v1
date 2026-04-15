@@ -34,5 +34,9 @@ vite.config.ts.timestamp-*
 # Maestro files
 .maestro.*
 
+# Compiled JS output in src/
+src/*.js
+src/*.js.map
+
 # E2E & Unit tests
 test-results/
