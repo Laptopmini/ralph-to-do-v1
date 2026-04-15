@@ -21,3 +21,7 @@ export function loadTodos(): Todo[] {
     return [];
   }
 }
+
+export function saveTodos(todos: Todo[]): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+}
