@@ -32,3 +32,9 @@ export function addTodo(todos: Todo[], text: string): Todo[] {
 export function toggleTodo(todos: Todo[], id: string): Todo[] {
   return todos.map((todo) => (todo.id === id ? { ...todo, completed: !todo.completed } : todo));
 }
+
+export function deleteTodo(todos: Todo[], id: string): Todo[] {
+  const index = todos.findIndex((todo) => todo.id === id);
+  if (index === -1) return todos;
+  return [...todos.slice(0, index), ...todos.slice(index + 1)];
+}
