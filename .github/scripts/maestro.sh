@@ -285,7 +285,7 @@ while IFS= read -r LEVEL <&3; do
 
     log INFO "Generating backpressure..."
     rm -f "$PR_TSV_FILE"
-    while IFS=$'\t' read -r BASE_BRANCH_NAME _PR_NUMBER; do
+    while IFS=$'\t' read -r BASE_BRANCH_NAME _PR_NUMBER <&3; do
         BACKPRESSURE_BRANCH_NAME="$BASE_BRANCH_NAME-backpressure"
 
         # Fail-fast: if any backpressure loop fails, abort the entire run
@@ -299,7 +299,7 @@ while IFS= read -r LEVEL <&3; do
         summarizer "$BACKPRESSURE_BRANCH_NAME" "$BASE_BRANCH_NAME"
 
         log SUCCESS "Generated backpressure for \"$BASE_BRANCH_NAME\"!"
-    done <<< "$BRANCHES"
+    done 3<<< "$BRANCHES"
 
     BACKPRESSURE_BRANCHES=""
     if [[ -s "$PR_TSV_FILE" ]]; then
@@ -322,7 +322,7 @@ while IFS= read -r LEVEL <&3; do
 
     log INFO "Proceeding with implementation..."
     rm -f "$PR_TSV_FILE"
-    while IFS=$'\t' read -r BASE_BRANCH_NAME _PR_NUMBER; do
+    while IFS=$'\t' read -r BASE_BRANCH_NAME _PR_NUMBER <&3; do
         # Fail-fast: if any ralph loop fails, abort the entire run
         git checkout "$BASE_BRANCH_NAME" && git pull
         npm i && npm run ralph -- "$FOLDER_NAME"
@@ -333,7 +333,7 @@ while IFS= read -r LEVEL <&3; do
         summarizer "$BASE_BRANCH_NAME" maestro
 
         log SUCCESS "Finished implementation for \"$BASE_BRANCH_NAME\"!"
-    done <<< "$BACKPRESSURE_BRANCHES"
+    done 3<<< "$BACKPRESSURE_BRANCHES"
 
     IMPLEMENTATION_BRANCHES=""
     if [[ -s "$PR_TSV_FILE" ]]; then
