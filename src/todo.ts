@@ -38,3 +38,12 @@ export function addTodo(todos: Todo[], text: string): Todo[] {
   };
   return [newTodo, ...todos];
 }
+
+export function toggleTodo(todos: Todo[], id: string): Todo[] {
+  return todos.map((todo) => {
+    if (todo.id === id) {
+      return { ...todo, completed: !todo.completed };
+    }
+    return todo;
+  });
+}
