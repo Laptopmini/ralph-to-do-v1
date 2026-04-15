@@ -28,3 +28,7 @@ export function addTodo(todos: Todo[], text: string): Todo[] {
   const newTodo: Todo = { id: crypto.randomUUID(), text: trimmed, completed: false };
   return [newTodo, ...todos];
 }
+
+export function toggleTodo(todos: Todo[], id: string): Todo[] {
+  return todos.map((todo) => (todo.id === id ? { ...todo, completed: !todo.completed } : todo));
+}

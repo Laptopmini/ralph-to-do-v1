@@ -8,3 +8,4 @@
 {"task": "Implement loadTodos function", "files_mutated": ["src/todo.ts"], "summary": "Added exported loadTodos() function that retrieves todos from localStorage with proper error handling."}
 {"task": "Implement saveTodos function", "files_mutated": ["src/todo.ts"], "summary": "Exported saveTodos(todos: Todo[]): void function that uses localStorage.setItem with JSON.stringify."}
 {"task": "Implement addTodo function", "files_mutated": ["src/todo.ts"], "summary": "Exported addTodo(todos: Todo[], text: string): Todo[] that creates and prepends new todo with trimmed text, skipping if empty."}
+{"task": "Implement toggleTodo function", "files_mutated": ["src/todo.ts"], "summary": "Exported toggleTodo(todos: Todo[], id: string): Todo[] that returns a new array with the matching item's completed boolean flipped."}

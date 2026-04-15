@@ -1,1 +1,1 @@
-Implemented addTodo function in src/todo.ts that creates a new Todo with crypto.randomUUID() for id, trimmed text, and completed=false, prepending it to the array; returns unchanged if text is empty/whitespace only.
+Implemented toggleTodo function in src/todo.ts that maps over todos array and flips the completed boolean for matching id; returns new array unchanged if no match found.
