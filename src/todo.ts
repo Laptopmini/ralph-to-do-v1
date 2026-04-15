@@ -21,3 +21,10 @@ export function loadTodos(): Todo[] {
 export function saveTodos(todos: Todo[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
+
+export function addTodo(todos: Todo[], text: string): Todo[] {
+  const trimmed = text.trim();
+  if (trimmed === "") return todos;
+  const newTodo: Todo = { id: crypto.randomUUID(), text: trimmed, completed: false };
+  return [newTodo, ...todos];
+}

@@ -7,3 +7,4 @@
 {"task": "Define Todo interface and storage constant", "files_mutated": ["src/todo.ts"], "summary": "Exported Todo interface with id/string, text/string, completed/boolean fields and STORAGE_KEY=\"todos\" constant."}
 {"task": "Implement loadTodos function", "files_mutated": ["src/todo.ts"], "summary": "Added exported loadTodos() function that retrieves todos from localStorage with proper error handling."}
 {"task": "Implement saveTodos function", "files_mutated": ["src/todo.ts"], "summary": "Exported saveTodos(todos: Todo[]): void function that uses localStorage.setItem with JSON.stringify."}
+{"task": "Implement addTodo function", "files_mutated": ["src/todo.ts"], "summary": "Exported addTodo(todos: Todo[], text: string): Todo[] that creates and prepends new todo with trimmed text, skipping if empty."}

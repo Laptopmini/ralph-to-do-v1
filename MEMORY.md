@@ -1,1 +1,1 @@
-Implemented saveTodos function in src/todo.ts that serializes the todos array to JSON and writes it to localStorage using STORAGE_KEY.
+Implemented addTodo function in src/todo.ts that creates a new Todo with crypto.randomUUID() for id, trimmed text, and completed=false, prepending it to the array; returns unchanged if text is empty/whitespace only.
