@@ -1,1 +1,1 @@
-Created src/todo.ts with Todo interface (id, text, completed) and STORAGE_KEY constant exported for LocalStorage persistence.
+Implemented loadTodos function in src/todo.ts that reads from localStorage, parses JSON, validates it's an array, and returns empty array for missing/invalid data.
