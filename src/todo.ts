@@ -47,3 +47,11 @@ export function toggleTodo(todos: Todo[], id: string): Todo[] {
     return todo;
   });
 }
+
+export function deleteTodo(todos: Todo[], id: string): Todo[] {
+  const index = todos.findIndex((todo) => todo.id === id);
+  if (index === -1) {
+    return todos;
+  }
+  return [...todos.slice(0, index), ...todos.slice(index + 1)];
+}

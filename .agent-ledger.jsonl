@@ -8,3 +8,4 @@
 {"task": "Implement saveTodos function", "files_mutated": ["src/todo.ts"], "summary": "Exported saveTodos(todos: Todo[]): void function that uses localStorage.setItem with JSON.stringify."}
 {"task": "Implement addTodo function", "files_mutated": ["src/todo.ts"], "summary": "Exported addTodo(todos: Todo[], text: string): Todo[] that trims input, returns unchanged if empty, otherwise creates new todo with random UUID and prepends to array."}
 {"task": "Implement toggleTodo function", "files_mutated": ["src/todo.ts"], "summary": "Exported toggleTodo(todos: Todo[], id: string): Todo[] that returns new array with completed boolean flipped for matching item."}
+{"task": "Implement deleteTodo function", "files_mutated": ["src/todo.ts"], "summary": "Exported deleteTodo(todos: Todo[], id: string): Todo[] that removes item by id, returns original array if not found."}

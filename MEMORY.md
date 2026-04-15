@@ -1,1 +1,1 @@
-Added toggleTodo function to src/todo.ts that maps over array and flips completed boolean for matching id, returns new array unchanged if no match found.
+Implemented deleteTodo function in src/todo.ts that filters out item with matching id, returns unchanged array if no match found.
