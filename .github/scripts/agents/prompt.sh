@@ -35,6 +35,7 @@ prompt() {
     local BASH_MAX_TIMEOUT=2500000 # Used for all bash commands executed by the agent
 
     local ALLOWED=""
+    local DISALLOWED=""
     local EXTRA_ARGS=()
     local LOCAL_ENV=()
 
@@ -60,6 +61,12 @@ prompt() {
             --allowedTools)
                 if (( i + 1 < ${#ARGS[@] })) && [[ "${ARGS[$((i+1))]}" != --* ]]; then
                     ALLOWED="${ARGS[$((i+1))]}"
+                    ((i+=2)) || true
+                    continue
+                fi ;;
+            --disallowedTools)
+                if (( i + 1 < ${#ARGS[@] })) && [[ "${ARGS[$((i+1))]}" != --* ]]; then
+                    DISALLOWED="${ARGS[$((i+1))]}"
                     ((i+=2)) || true
                     continue
                 fi ;;
@@ -123,7 +130,7 @@ prompt() {
             # FIXME: If MiniMax-M2.7, use `minimax` provider
 
             LOCAL_ENV=(
-                OPENCODE_PERMISSION="$(get_opencode_permissions "$ALLOWED")" # Inlined json permissions config
+                OPENCODE_PERMISSION="$(get_opencode_permissions "$ALLOWED" "$DISALLOWED")" # Inlined json permissions config
                 OPENCODE_CUSTOM_PROVIDER="$OPENCODE_CUSTOM_PROVIDER"
                 OPENCODE_CUSTOM_PROVIDER_NAME="LM Studio (local)"
                 OPENCODE_CUSTOM_MODEL="$MODEL"
@@ -161,9 +168,12 @@ prompt() {
         local RAW
         local CLAUDE_CONTEXT_TEMP_FILE=".maestro.claude.tmp"
 
-        # Include the allowed tools if provided
+        # Include the allowed/disallowed tools if provided
         if [[ -n "$ALLOWED" ]]; then
             EXTRA_ARGS+=("--allowedTools" "$ALLOWED")
+        fi
+        if [[ -n "$DISALLOWED" ]]; then
+            EXTRA_ARGS+=("--disallowedTools" "$DISALLOWED")
         fi
         
         # Move the .CLAUDE.md file to a temp file to avoid it being read by the agent

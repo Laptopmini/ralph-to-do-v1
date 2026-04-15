@@ -51,7 +51,6 @@ Before ending your cycle, check if you encountered something **surprising or non
 
 # EXECUTION PROTOCOL
 1. Read the injected context, error logs (if any), and the active task.
-2. Generate the necessary file modifications.3. **Post-modification quality gates:** After making file changes, run the following in order:
-   - `npm run lint` — auto-fixes lint & formatting issues. If any issues cannot be auto-fixed, resolve them manually before proceeding.
-   - `npm run check-types` — verifies TypeScript compilation. Run this ONLY if you created or modified TypeScript files. Fix only type errors that pertain to the files you created or modified as part of this task.
+2. Generate the necessary file modifications.
+3. Auto-fix lint & formatting issues using `npm run lint`. If any issues cannot be auto-fixed, resolve them manually before proceeding.
 4. End your response strictly with your `<memory>` and `<ledger>` tags. Do not output conversational filler.

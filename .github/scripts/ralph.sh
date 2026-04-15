@@ -124,6 +124,7 @@ $PRD_CONTENT
     set +e
     OUTPUT=$(prompt "$AGENT_PROMPT" \
         --allowedTools "Read,Edit,Write,Glob,Grep,Bash" \
+        --disallowedTools "Bash(git:*),Bash(npm test*),Bash(npm run test*),Bash(npm run check-types*),Bash(npx jest*),Bash(npx playwright*),Bash(npx tsc*)" \
         --model "${JUNIOR_DEVELOPER_MODEL:-sonnet}")
     PROMPT_EXIT=$?
     set -e
@@ -148,7 +149,7 @@ $PRD_CONTENT
     PROPOSED_MEMORY=$(echo "$OUTPUT" | awk '/<memory>/{flag=1; next} /<\/memory>/{flag=0} flag')
     PROPOSED_LEDGER=$(echo "$OUTPUT" | awk '/<ledger>/{flag=1; next} /<\/ledger>/{flag=0} flag')
 
-    log INFO "Running Validation: $TARGETED_TEST"
+    log INFO "Determining validation commands..."
     ALLOWED_PREFIXES=("npm test" "npx jest" "npx playwright" "npx tsc" "npx biome" "bash scripts/")
     ALLOWED=false
     for prefix in "${ALLOWED_PREFIXES[@]}"; do
@@ -164,10 +165,34 @@ $PRD_CONTENT
         log ERROR "   Fix the [test: ...] annotation in PRD.md and re-run."
         exit 1
     fi
-    set +e
-    TEST_OUTPUT=$(eval "$TARGETED_TEST" 2>&1)
-    TEST_EXIT_CODE=$?
-    set -e
+
+    TASK_VALIDATION=()
+    UNCHECKED_COUNT=$(grep -c "^\s*- \[ \]" PRD.md || true)
+
+    # Make sure to lint unless biome is already being used
+    if [[ "$TARGETED_TEST" != "npx biome"* ]]; then
+        TASK_VALIDATION+=("npm run lint")
+    fi
+
+    # If this is the last task, include a final typecheck
+    if [ "$UNCHECKED_COUNT" -eq 1 ]; then
+        TASK_VALIDATION+=("npm run check-types")
+    fi
+
+    # Add the targeted test command as the last item
+    TASK_VALIDATION+=("$TARGETED_TEST")
+
+    for TEST_COMMAND in "${TASK_VALIDATION[@]}"; do
+        log INFO "Running Validation: $TEST_COMMAND"
+        set +e
+        TEST_OUTPUT=$(eval "$TEST_COMMAND" 2>&1)
+        TEST_EXIT_CODE=$?
+        set -e
+        
+        if [ $TEST_EXIT_CODE -ne 0 ]; then
+            break;
+        fi
+    done
 
     if [ $TEST_EXIT_CODE -eq 0 ]; then
         log SUCCESS "Task passed! Continuing..."
@@ -200,13 +225,13 @@ $PRD_CONTENT
         git commit -m "feat(ai): $CURRENT_TASK_LABEL" 
     else
         log ERROR "Validation failed. The agent must try again."
-        log INFO "Test Output:\n$TEST_OUTPUT"
+        log INFO "Test Output:\n$TEST_COMMAND\n$TEST_OUTPUT"
 
         ERROR_FEEDBACK="
         YOUR LAST ATTEMPT FAILED!
-        You tried to complete the task, but the validation test failed.
+        You tried to complete the task, but the validation failed.
         
-        Test Command: $TARGETED_TEST
+        Test Command: $TEST_COMMAND
         Exit Code: $TEST_EXIT_CODE
         
         Test Output / Error Logs:
@@ -215,7 +240,7 @@ $PRD_CONTENT
         Please analyze the error, fix the code, and try again.
         "
 
-        echo "Retrying in 5 seconds... (Ctrl+C to abort)"
+        log WARN "Retrying in 5 seconds... (Ctrl+C to abort)"
         sleep 5
     fi
 
