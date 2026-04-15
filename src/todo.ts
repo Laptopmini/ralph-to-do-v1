@@ -5,3 +5,19 @@ export interface Todo {
 }
 
 export const STORAGE_KEY = "todos";
+
+export function loadTodos(): Todo[] {
+  try {
+    const value = localStorage.getItem(STORAGE_KEY);
+    if (value === null) {
+      return [];
+    }
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed;
+  } catch {
+    return [];
+  }
+}
