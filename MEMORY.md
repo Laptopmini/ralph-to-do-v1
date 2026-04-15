@@ -1,1 +1,1 @@
-Implemented loadTodos function in src/todo.ts that reads from localStorage, parses JSON, validates it's an array, and returns empty array for missing/invalid data.
+Implemented saveTodos function in src/todo.ts that serializes the todos array to JSON and writes it to localStorage using STORAGE_KEY.
