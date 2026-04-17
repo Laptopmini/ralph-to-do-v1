@@ -9,7 +9,7 @@ For full documentation on how the Ralph Loop works and how to use these repos, s
 ## Prompt
 
 `npm run maestro -- \`
-> To-Do List with Persistence: Add, toggle complete, delete, and save to LocalStorage so it survives a page refresh. I want this application to be a practical to-do list tracker website with persistence. I want to be able to add tasks, mark them as complete, and delete them. I should be able to refresh the page and keep my tasks in their current state. The interface should be simple and intuitive. Something clean and modern, with a minimalist design. It should also be responsive, so it works well on both desktop and mobile devices. I should be able to add tasks by clicking on the "Add Task" button and mark them as complete by clicking on the checkbox next to each task. I should be able to delete tasks by clicking on the "Delete" button next to each task.
+> Turn this website application into a persistent To-Do List application that allows users to add, toggle completion status, and delete tasks, utilizing LocalStorage to ensure all data is preserved across page refreshes. The feature should be delivered with a modern, minimalist aesthetic characterized by a clean, uncluttered interface, professional typography, and an intuitive user experience. To achieve a polished, premium feel, please incorporate subtle micro-interactions—such as smooth transitions when adding or removing items—and ensure the layout is fully responsive to maintain a high-end visual experience across all device breakpoints.
 
 ## Changelog
 
