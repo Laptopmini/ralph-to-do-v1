@@ -23,5 +23,5 @@ notify() {
     fi
 
     # Send the notification
-    curl -d "$1" "https://ntfy.sh/$NTFY_TOPIC" || { log ERROR "Failed to send notification. Ignoring error and continuing..."; }
+    curl -s -o /dev/null -d "$1" "https://ntfy.sh/$NTFY_TOPIC" || { log ERROR "Failed to send notification. Ignoring error and continuing..."; }
 }
