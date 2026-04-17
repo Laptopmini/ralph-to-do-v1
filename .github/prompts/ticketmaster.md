@@ -17,10 +17,6 @@ Write `PRD.md` at the repository root. Use exactly this structure:
 ```
 # PRD: {{TICKET_TITLE}}
 
-## Constraints
-
-<Bullet list of constraints from the ticket. If the ticket has no constraints, write: "No additional constraints beyond the project defaults.">
-
 ## Tasks
 
 <Task checklist — see Task Format below>
@@ -76,11 +72,6 @@ Given a ticket section like this (input):
 …the Write tool call's `content` argument should be the following text (shown indented here for illustration — do NOT indent it in the actual file, and do NOT wrap it in backticks):
 
     # PRD: Timer Logic (Pure Functions)
-
-    ## Constraints
-
-    - Must be a TypeScript module importable by Jest
-    - No DOM or browser APIs
 
     ## Tasks
 
