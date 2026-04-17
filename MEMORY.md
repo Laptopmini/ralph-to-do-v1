@@ -1,1 +1,1 @@
-Created src/app.js as an ES module and updated src/index.html with necessary DOM elements (form, list, count, empty-state, filters). Implemented render() logic including filtering, state updates, and animation classes. Wired up event listeners for form submission, todo actions, and filter buttons.
+Modified `src/index.html` to match the PRD requirements: updated title, replaced content with a centered `<main>` container, added required attributes (autocomplete, maxlength), and restructured elements into h1, form, filter section, list, empty-state paragraph, and footer span.
