@@ -1,1 +1,5 @@
-Modified `src/index.html` to match the PRD requirements: updated title, replaced content with a centered `<main>` container, added required attributes (autocomplete, maxlength), and restructured elements into h1, form, filter section, list, empty-state paragraph, and footer span.
+Implemented the CSS design system in src/style.css. 
+Defined :root variables for colors, spacing, transitions, and font stack. 
+Added global reset, layout styles for main card, form, filters, list items, and empty state. 
+Included @keyframes and animation classes for enter/leave effects. 
+Added media queries for responsiveness and prefers-reduced-motion support.
