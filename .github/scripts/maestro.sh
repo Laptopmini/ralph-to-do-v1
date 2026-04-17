@@ -33,7 +33,17 @@ export JUNIOR_DEVELOPER_MODEL="qwen/qwen3.5-35b-a3b" # Implementation
 
 # FIXME: Try using minimax/MiniMax-M2.7 for Planning & Backpressure
 
+# FIXME: Update docs/initialize-ralph-node/PRD.md to be new format
+
+# FIXME: Leverage a custom system prompt for Ralph
+# move the role/mode invariants from .github/prompts/ralph.md into a system-slot append (via --append-system-prompt for claude, AGENTS.md for opencode), and    
+# keep the user-prompt assembly for the per-cycle dynamic context (ledger, memory, current task). That split matches how the models are trained to weight each channel.
+
 # FIXME: Update blueprint to not be a skill but a pure prompt
+
+# FIXME: Rewrite `Step 3 — Identify gaps and assumptions` in Blueprint
+# - Dont have it write `Assumptions` section, but consider these as part of your plan
+# - Have it concider the files which will become unsued and should be removed as part of a task
 
 # Variables
 
@@ -165,7 +175,7 @@ while $MISSING_BLUEPRINT; do
     else
         log INFO "Generating implementation plan..."
         # FIXME: Change this into a pure prompt rather than a skill
-        TREE_LEVELS=$(prompt "/blueprint $*" --allowedTools "Read,Glob,Grep,Write($BLUEPRINT_FILE),Edit($BLUEPRINT_FILE)" --model "$STAFF_DEVELOPER_MODEL")
+        TREE_LEVELS=$(prompt "/blueprint $*" --allowedTools "Read,Glob,Grep,Write($BLUEPRINT_FILE),Edit($BLUEPRINT_FILE),Agent" --model "$STAFF_DEVELOPER_MODEL")
 
         # FIXME: Should tree levels be written by the skill using a script to avoid divergence?
 

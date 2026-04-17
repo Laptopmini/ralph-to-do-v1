@@ -4,8 +4,7 @@
 # GET-PROMPT: Build a ticketmaster prompt for a single ticket.
 # Usage: ./get-prompt.sh <blueprint-file> <ticket-number>
 #
-# Reads the blueprint, extracts the plan-level context (everything before the
-# first "#### Ticket" heading) and the specific ticket section, then renders
+# Reads the blueprint, extracts the specific ticket section, then renders
 # the prompt template from .github/prompts/ticketmaster.md with placeholders
 # filled in. Outputs the rendered prompt to stdout.
 # ==============================================================================
@@ -45,12 +44,6 @@ strip_trailing_separator() {
         }
     '
 }
-
-# Extract plan-level context (everything before the first #### Ticket heading)
-PLAN_CONTEXT=$(awk '
-    /^#### Ticket [0-9]+/ { exit }
-    { print }
-' "$BLUEPRINT" | strip_trailing_separator)
 
 # Extract the specific ticket section (from its heading to the next heading or EOF)
 # Also captures the title from the heading line.
@@ -98,7 +91,6 @@ fi
 # Use awk for safe multi-line substitution (bash string replacement can't
 # handle newlines in the replacement value reliably across all shells).
 # Set environment variables to avoid issues with newlines in command-line args.
-export PLAN_CONTEXT
 export TICKET_SECTION
 export TICKET_NUM
 export TICKET_TITLE
@@ -115,14 +107,12 @@ RENDERED=$(awk '
         return result str
     }
     BEGIN {
-        plan_ctx    = ENVIRON["PLAN_CONTEXT"]
         ticket_sec  = ENVIRON["TICKET_SECTION"]
         ticket_num  = ENVIRON["TICKET_NUM"]
         ticket_title = ENVIRON["TICKET_TITLE"]
     }
     {
         line = $0
-        line = replace_literal(line, "{{PLAN_CONTEXT}}",   plan_ctx)
         line = replace_literal(line, "{{TICKET_SECTION}}", ticket_sec)
         line = replace_literal(line, "{{TICKET_NUMBER}}",  ticket_num)
         line = replace_literal(line, "{{TICKET_TITLE}}",   ticket_title)
