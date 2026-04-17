@@ -113,6 +113,27 @@ A workstream becomes a **ticket**. If the feature is simple enough that all work
 
 **Key rule:** Two tickets must never touch the same file. If they would, merge them into one ticket.
 
+**Constraint scope:** A ticket's `Constraints` block must state guardrails that apply equally to *every* task in that ticket. Constraints are read by the implementation agent on every cycle, including while the first task runs, so any forward-looking reference becomes a license for the agent to start work it should not yet be doing. In particular, do not reference:
+
+- other tickets by number (e.g. "Ticket 1 files are read-only")
+- files that a later task in this same ticket will create — they don't exist yet when early tasks run
+- a specific task's ordering, dependencies, or internals within the ticket
+
+Anything task-specific, time-scoped, or file-specific belongs in that task's description, not in Constraints. If you cannot phrase a rule so it applies equally from task 1 onward, it is not a ticket-level constraint. The same forward-reference rule applies to task descriptions themselves: a task must not name a file that a later task in the same ticket (or a yet-unimplemented ticket) will create, because the agent will create any missing file it sees referenced.
+
+**Task ordering by file dependency:** Every file named in a task's description must be produced by something that runs *earlier*, so the agent can trust that the file already exists on disk when the task begins. "Earlier" means one of:
+
+1. The file already exists in the repo at plan time.
+2. A prior task in the *same* ticket creates it.
+3. A task in a ticket listed in this ticket's `depends_on` creates it (remember: a child ticket may import from parent-owned files but must never modify them).
+
+If none of those is true, the task references a file that will not exist when the agent runs it — reorder the tasks, add a `depends_on`, or merge the two tasks into one.
+
+- *Intra-ticket example:* if one task creates an HTML file that loads `/app.js`, a prior task in the same ticket must create `app.js`. Never let the HTML task's description mention `app.js` before `app.js` exists.
+- *Cross-ticket example:* if Ticket 2's first task imports from `src/lib/foo.ts`, then Ticket 2 must declare `depends_on: [Ticket 1]` and Ticket 1 must own the creation of `src/lib/foo.ts`.
+
+Why this matters: the implementation agent only sees tasks up to and including the current one in the current ticket's PRD. It cannot know a later task — or another ticket — will create the file, so any file named in the current task's description will be created now if it does not yet exist on disk. If two tasks reference each other's files and cannot be ordered, merge them into a single task.
+
 ### Step 5 — Protected files check
 
 Before writing the plan, verify that no ticket proposes modifying protected files:
@@ -138,9 +159,35 @@ This ensures the implementation does not leave behind broken or misleading tests
 
 Write the plan to `.maestro.blueprint.md`, following the output format below exactly. The file content must match the output format — nothing before, nothing after. Do NOT print the plan to the chat.
 
-### Step 7 — Output parallel execution levels
+### Step 7 — Review embedded commands with a subagent
 
-After writing the plan file, compute the dependency tree levels for the tickets and print them to the chat. A "level" is a set of tickets whose dependencies are all satisfied by tickets in earlier levels (level 0 = tickets with no dependencies).
+Before printing the execution levels, spawn a subagent to audit commands embedded in task prose against the detected tech stack. This catches issues like invalid CLI flags, or commands that are syntactically valid but inappropriate for the stack (e.g., `tsc` as a production build when the framework ships its own `build` command). The subagent's fresh context makes it a better reviewer than a self-check by the author.
+
+Call the `Agent` tool with:
+- `subagent_type: "general-purpose"`
+- `description`: `"Review blueprint commands"`
+- `prompt`: a self-contained brief including:
+  1. **What you're reviewing** — explain this is a freshly written implementation blueprint at `.maestro.blueprint.md`. Paste the full file contents inline (read it back from disk so the subagent does not need to).
+  2. **Detected tech stack** — a short bullet list of what Step 2 found: framework, build tool/script, test framework, TypeScript config presence, any notable conventions. This is the context the reviewer needs to judge "inappropriate for the stack."
+  3. **What to hunt for** — quote this verbatim: *"Find commands embedded in task descriptions (prose, backtick spans, or proposed `package.json` `scripts` entries) that are (a) syntactically invalid for the named tool, (b) using flags that don't fit that tool's purpose, or (c) inappropriate given the detected stack — especially `tsc` used as a production builder when the framework has its own build command, or test-runner flags that don't exist. Check any task that mutates `package.json` `scripts` with extra scrutiny."*
+  4. **Return format** — quote this verbatim: *"If nothing is wrong, return exactly `NO_ISSUES` and nothing else. Otherwise, return a punch list, one entry per issue, each formatted as:*
+
+     ```
+     - Section: <ticket number and task number, or 'Tech Stack' / 'File Structure'>
+       Bad: `<quoted command>`
+       Why: <one sentence>
+       Fix: <suggested replacement>
+     ```
+
+     *Keep the full response under 300 words. Do not include any other commentary."*
+
+When the subagent returns:
+- If the response is exactly `NO_ISSUES`, proceed to Step 8.
+- Otherwise, for each punch-list entry, apply the suggested fix to `.maestro.blueprint.md` via the `Edit` tool. Do not print anything to chat in this step — the final chat output in Step 8 must remain the execution levels alone.
+
+### Step 8 — Output parallel execution levels
+
+After the review step, compute the dependency tree levels for the tickets and print them to the chat. A "level" is a set of tickets whose dependencies are all satisfied by tickets in earlier levels (level 0 = tickets with no dependencies).
 
 Algorithm:
 1. Level 0: all tickets with no `depends_on`
@@ -232,7 +279,7 @@ all tickets in its `depends_on` list are complete. Siblings under the same paren
 
 **Constraints:**
 - Use `data-testid` attributes on all interactive and display elements (buttons, inputs, lists, status indicators)
-- Imports from Ticket 1 files are read-only — do not modify files owned by Ticket 1
+- Do not modify files owned by another ticket — import from them as read-only
 
 **Files owned:**
 - `src/stores/readingListStore.ts` (create)
@@ -274,10 +321,13 @@ Before outputting the plan, verify:
 - [ ] Every task has a nature tag: `[logic]`, `[ui]`, or `[infra]`
 - [ ] Every file in "Files owned" has an operation tag: `(create)`, `(modify)`, or `(delete)`
 - [ ] Every ticket has a Constraints section (can be empty if none apply)
+- [ ] Every Constraints entry applies to every task in the ticket — no entry references another ticket, references a file created only by a later task in this ticket, or scopes itself to a specific task's ordering
+- [ ] Every file named in a task's description is produced by something that runs earlier: the file already exists in the repo, OR an earlier task in the same ticket creates it, OR a ticket in this ticket's `depends_on` creates it. No task references a file that a later task (in any ticket) will create
 - [ ] **No task creates, writes, or modifies test files** — test creation is handled by a separate effort. Deleting or modifying conflicting test files is allowed and expected
 - [ ] Every task description is specific enough that a developer could derive unit, E2E, or utility tests from it (includes inputs, outputs, edge cases, expected behaviors, status codes, `data-testid` values, etc.)
 - [ ] All UI tasks enforce `data-testid` attributes on interactive and display elements
 - [ ] Existing test files that conflict with the planned changes are listed for deletion in the appropriate ticket
+- [ ] Commands embedded in task prose (including proposed `package.json` `scripts` entries) have been audited by the Step 7 review subagent against the detected stack
 
 ---
 

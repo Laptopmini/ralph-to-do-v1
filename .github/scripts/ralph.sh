@@ -13,7 +13,7 @@ source .github/scripts/agents/prompt.sh
 # Settings
 
 LOCK_FILE=".ralph.lock"
-MAX_LOOPS=20 # FIXME: Should be MAX_LOOPS_PER_TASK, or a multiple of the number of tasks
+MAX_LOOPS=10 # This is the maximum number of iterations per task
 TYPE_CHECK_CMD="npm run check-types"
 UNIT_TEST_CMD="npx jest --silent --no-verbose"
 E2E_TEST_CMD="npx playwright test --reporter=line"
@@ -46,11 +46,11 @@ log WARN "Starting Ralph Loop for at most $MAX_LOOPS iterations..."
 
 ERROR_FEEDBACK=""
 LOOP_COUNTER=0
+TOTAL_LOOPS=0
 PREVIOUS_TASK_VALIDATION=()
 declare -A PREVIOUS_TASK_VALIDATION_LOOKUP
 
 while true; do
-    log INFO "------------------------- Iteration $((LOOP_COUNTER + 1))/$MAX_LOOPS -------------------------"
     log INFO "Parsing Active Task & Target Test..."
 
     CURRENT_TASK=$(grep -m 1 "^\s*- \[ \]" PRD.md || true)
@@ -81,12 +81,15 @@ while true; do
     fi
 
     if [[ "$LOOP_COUNTER" -ge "$MAX_LOOPS" ]]; then
-        log ERROR "⚠️ Max loops reached!"
+        log ERROR "⚠️ Max loops reached for task:
+    $CURRENT_TASK
+    Aborting..."
         exit 1
     fi
 
     LOOP_COUNTER=$((LOOP_COUNTER+1))
 
+    log INFO "------------------------- Iteration $((LOOP_COUNTER))/$MAX_LOOPS (Total: $((LOOP_COUNTER + $TOTAL_LOOPS))) -------------------------"
     log INFO "Active Task:
     $CURRENT_TASK"
 
@@ -139,8 +142,8 @@ $PRD_CONTENT
         0)
             ;;  # Prompt succeeded
         2)
-            log WARN "Rate limit hit. Waiting 1 hour..."
-            sleep 3600
+            log WARN "Rate limit hit. Waiting 15 minutes..."
+            sleep 900
             LOOP_COUNTER=$((LOOP_COUNTER - 1))
             continue
             ;;
@@ -187,18 +190,20 @@ $PRD_CONTENT
     COMBINED_VALIDATION=("${TASK_VALIDATION[@]}")
     if [ "$UNCHECKED_COUNT" -eq 1 ]; then
         # If this is the last task, include a final typecheck & full test suite
-        TASK_VALIDATION+=("$TYPE_CHECK_CMD")
+        COMBINED_VALIDATION+=("$TYPE_CHECK_CMD")
         PREVIOUS_TASK_VALIDATION_LOOKUP[$TYPE_CHECK_CMD]=1
 
-        TASK_VALIDATION+=("$UNIT_TEST_CMD")
+        COMBINED_VALIDATION+=("$UNIT_TEST_CMD")
         PREVIOUS_TASK_VALIDATION_LOOKUP[$UNIT_TEST_CMD]=1
 
-        TASK_VALIDATION+=("$E2E_TEST_CMD")
+        COMBINED_VALIDATION+=("$E2E_TEST_CMD")
         PREVIOUS_TASK_VALIDATION_LOOKUP[$E2E_TEST_CMD]=1
     elif [[ ${#PREVIOUS_TASK_VALIDATION[@]} -gt 0 ]]; then
         # Make sure previous tasks are still passing
         COMBINED_VALIDATION+=("${PREVIOUS_TASK_VALIDATION[@]}")
     fi
+
+    # FIXME: Remove duplicate validations, multiple `npx tsc --noEmit` for example
 
     for TEST_COMMAND in "${COMBINED_VALIDATION[@]}"; do
         log INFO "Running Validation: $TEST_COMMAND"
@@ -243,14 +248,17 @@ $PRD_CONTENT
         }' PRD.md > PRD.md.tmp && mv PRD.md.tmp PRD.md
         
         git add .
-        git commit -m "feat(ai): $CURRENT_TASK_LABEL" 
+        git commit -m "feat(ai): $CURRENT_TASK_LABEL"
+
+        TOTAL_LOOPS=$((TOTAL_LOOPS+LOOP_COUNTER))
+        LOOP_COUNTER=0
     else
         log ERROR "Validation failed. The agent must try again."
         log INFO "Test Output:\n$TEST_COMMAND\n$TEST_OUTPUT"
 
         ERROR_FEEDBACK_HEADER="YOUR LAST ATTEMPT FAILED!
         You tried to complete the task, but the validation failed."
-        if [[ ${PREVIOUS_TASK_VALIDATION_LOOKUP[$TEST_COMMAND]} ]]; then
+        if [[ ${PREVIOUS_TASK_VALIDATION_LOOKUP[$TEST_COMMAND]:-} ]]; then
             ERROR_FEEDBACK_HEADER="YOUR LAST ATTEMPT CAUSED A REGRESSION!
         You successfully implemented the task, but a previously working validation is now failing."
         fi
@@ -274,4 +282,4 @@ $PRD_CONTENT
     log INFO "Looping..."
 done
 
-log INFO "👋 Ralph Loop ended!"
+log INFO "👋 Ralph Loop ended after $TOTAL_LOOPS successful iteration(s)!"

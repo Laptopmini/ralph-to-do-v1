@@ -45,7 +45,7 @@ Use Bash ONLY when the task literally requires it (e.g., "Install package X", "C
 
 ## 6. TASK SPECS ARE LITERAL
 
-File paths, extensions, and identifiers in the task are exact. Do not rename `.js` to `.ts`, change casing, or "fix" naming for consistency.
+File paths, extensions, and identifiers in the task are exact. Do not rename `.js` to `.ts`, change casing, or "fix" naming for consistency. Do not create files or markup not specified in the task.
 
 # REQUIRED OUTPUT ENDING
 
