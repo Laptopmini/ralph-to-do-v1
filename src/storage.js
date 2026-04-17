@@ -28,7 +28,7 @@ export function saveTodos(todos) {
     localStorage.setItem(KEY, JSON.stringify(todos));
   } catch (e) {
     if (e.name !== "QuotaExceededError") {
-      // Swallowing as per spec
+      throw e;
     }
   }
 }
