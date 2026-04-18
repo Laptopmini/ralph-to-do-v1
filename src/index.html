@@ -3,10 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ralph HTML App</title>
+    <title>Minimalist To-Do</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <h1>Hello World</h1>
+    <div class="app-container">
+      <header>
+        <h1>Tasks</h1>
+        <p id="date-display"></p>
+      </header>
+
+      <form id="todo-form">
+        <input type="text" id="todo-input" placeholder="Add a new task..." required autocomplete="off" />
+        <button type="submit" id="add-btn">+</button>
+      </form>
+
+      <ul id="todo-list"></ul>
+
+      <div class="stats">
+        <span id="items-left">0 items left</span>
+      </div>
+    </div>
+    <script src="index.js"></script>
   </body>
 </html>
